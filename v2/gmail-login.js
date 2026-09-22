@@ -250,9 +250,107 @@ const stepRecaptcha = t('gmail.stepRecaptcha', async (page, options) => {
   console.log('[login-trace] 9.1 Đã phát hiện ô vuông reCAPTCHA hiển thị, chuẩn bị bấm...');
   const humanDelay = options.timeoutMs <= 500 ? 5 : 1500;
   await new Promise(r => setTimeout(r, humanDelay));
-  if (classify(page.url()) !== 'recaptcha') return;
+  // 3. Hàm click chuột thật tại toạ độ checkbox
+  const clickAt = t('gmail.clickAt', async (x, y) => {
+    const freshCoord = (await getRecaptchaCoord(page)) || { x, y };
+    console.log(`[TwoCaptcha] 🖱️ Bấm tích vào ô reCAPTCHA tại toạ độ: ${Math.round(freshCoord.x)} ${Math.round(freshCoord.y)}`);
+    await page.mouse.click(freshCoord.x, freshCoord.y, { delay: 100 });
+  });
 
-  // Đã bỏ toàn bộ code từ bước nhấn nút ô captcha trở đi để làm lại.
+  // 4. Gọi giải và bypass qua module twoCaptcha.js (tham khảo từ V1)
+  let navigated = false;
+  const onCheckboxNavigation = t('gmail.checkboxNavigation', frame => {
+    if (frame === page.mainFrame() && classify(page.url()) !== 'recaptcha') navigated = true;
+  });
+  page.on('framenavigated', onCheckboxNavigation);
+
+  const checkboxEvaluate = t('gmail.checkboxEvaluate', async script => {
+    if (navigated) throw navigationFinished;
+    try {
+      const result = await evaluate(script);
+      if (navigated) throw navigationFinished;
+      return result;
+    } catch (error) {
+      if (navigated) throw navigationFinished;
+      throw error;
+    }
+  });
+
+  let result;
+  try {
+    if (typeof solver.solveAndBypass === 'function') {
+      const spanSolve = trace.traceIn('gmail.recaptcha.solve');
+      try {
+        result = await solver.solveAndBypass({ evaluate: checkboxEvaluate, clickAt, autoClickNext: false });
+        if (!result || !result.success) {
+          throw failure('recaptcha_failed', result?.error || 'Giải CAPTCHA thất bại.');
+        }
+      } finally {
+        trace.traceOut(spanSolve, result && result.success ? 'ok' : 'error');
+      }
+    } else {
+      // Fallback cho mock solver trong unit test
+      await clickAt(coord.x, coord.y);
+      const isVerified = await solver.waitForCheckState(checkboxEvaluate, options.timeoutMs <= 500 ? 100 : 4000, 150);
+      if (!isVerified) {
+        const cap = await solver.detect(checkboxEvaluate);
+        if (!cap || !cap.detected) throw failure('manual', 'Không nhận diện được CAPTCHA để giải tự động.');
+        const spanSolve = trace.traceIn('gmail.recaptcha.solve');
+        let solveResult;
+        try {
+          solveResult = await solver.solveRecaptchaV2({
+            siteKey: cap.siteKey || cap.sitekey,
+            pageUrl: cap.pageUrl || page.url(),
+            invisible: cap.invisible,
+            dataS: cap.dataS,
+            heartbeat: () => evaluate('1'),
+          });
+          if (!solveResult || !solveResult.success) throw failure('recaptcha_failed', solveResult?.error || 'Giải CAPTCHA thất bại.');
+        } finally {
+          trace.traceOut(spanSolve, solveResult && solveResult.success ? 'ok' : 'error');
+        }
+        try { if (page.keyboard && typeof page.keyboard.press === 'function') await page.keyboard.press('Escape'); } catch (_) {}
+        await solver.injectToken(checkboxEvaluate, solveResult.token);
+        try { if (page.keyboard && typeof page.keyboard.press === 'function') await page.keyboard.press('Escape'); } catch (_) {}
+      }
+      result = { success: true, autoRedirected: classify(page.url()) !== 'recaptcha' };
+    }
+  } catch (error) {
+    if (error === navigationFinished) return;
+    throw error;
+  } finally {
+    page.removeListener('framenavigated', onCheckboxNavigation);
+  }
+
+  // 5. Kiểm tra xem sau khi nhận callback trang đã tự động điều chuyển chưa (giống V1)
+  if (classify(page.url()) !== 'recaptcha' || result.autoRedirected) {
+    console.log('[login-trace] 🚀 Google đã tự động chuyển tiếp sau khi giải CAPTCHA!');
+    return;
+  }
+
+  // Nếu chưa tự chuyển, bấm nút "Tiếp theo" (Next) và chờ URL đổi theo AGENTS.md
+  console.log('[login-trace] ➡️ Trang chưa tự chuyển -> Bấm Tiếp theo sau khi giải CAPTCHA...');
+  await clickAndWaitUrl(page, t('gmail.next', async () => {
+    assertAccounts(page);
+    let clicked = false;
+    if (solver && typeof solver.clickNext === 'function') {
+      const clickRes = await solver.clickNext(evaluate);
+      if (clickRes && clickRes !== 'not-found') clicked = true;
+    }
+    if (!clicked) {
+      const fallbackSels = ['#identifierNext button', '#identifierNext', '#recaptchaNext button', '#recaptchaNext', 'button[type="submit"]'];
+      for (const sel of fallbackSels) {
+        try {
+          const el = await page.$(sel);
+          if (el) {
+            await page.click(sel);
+            clicked = true;
+            break;
+          }
+        } catch (_) {}
+      }
+    }
+  }), recaptchaTimeoutMs);
 });
 const handleRecaptcha = stepRecaptcha;
 
