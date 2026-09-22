@@ -1,0 +1,89 @@
+#profileTable{min-width:1730px;table-layout:fixed}
+#profileTable th,#profileTable td{padding:10px 9px;text-align:left}
+#profileTable th{font-size:11px;letter-spacing:0;color:#56637a}
+#profileTable th:nth-child(1){width:36px}
+#profileTable th:nth-child(2){width:52px}
+#profileTable th:nth-child(3){width:42px}
+#profileTable th:nth-child(4){width:104px}
+#profileTable th:nth-child(5){width:220px}
+#profileTable th:nth-child(6){width:165px}
+#profileTable th:nth-child(7){width:215px}
+#profileTable th:nth-child(8){width:225px}
+#profileTable th:nth-child(10){width:75px}
+#profileTable th:nth-child(11),#profileTable th:nth-child(12){width:200px}
+#profileTable th:nth-child(13){width:105px}
+#profileTable td{font-size:12px;height:54px}
+#profileTable th button{border:0;background:none;color:inherit;font:inherit;padding:0;cursor:pointer}
+#profileTable th[aria-sort=ascending] button:after{content:' ↑'}
+#profileTable th[aria-sort=descending] button:after{content:' ↓'}
+#profileTable tr.selected-row td{background:#edf2ff}
+#profileTable input[type=checkbox]{accent-color:#4666e8}
+.status-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#b2bbcb}
+.status-dot.running{background:#28a37a}
+.note-input{width:100%;border:1px solid transparent;background:transparent;padding:7px;border-radius:5px;color:#475674;font:inherit}
+.note-input:hover,.note-input:focus{border-color:#dfe5ef;background:white;outline-color:#7b95f0}
+.reveal-account{font-size:10px;border:1px solid #e2e7f0;background:white;color:#5973c9;border-radius:4px;margin-left:8px;padding:3px 5px}
+.account-cell span{font-family:Consolas,monospace}
+.table-wrap{max-height:65vh;overflow:auto}
+#profileTable thead{position:sticky;top:0;z-index:1;background:#fafbfd}
+
+.profiles-panel .panel-heading{padding:20px 23px;flex-wrap:nowrap}
+.page-heading{justify-content:flex-end;margin-bottom:20px}
+#profileActions{display:flex;align-items:center;gap:10px;margin-right:auto;font-size:12px;color:#76839a}
+#profileActions[hidden],#actionOptions[hidden]{display:none}
+.action-picker{position:relative}
+#actionOptions{position:absolute;top:calc(100% + 6px);left:0;min-width:190px;background:white;border:1px solid #dfe5ef;border-radius:8px;padding:5px;box-shadow:0 8px 24px #25314a20;z-index:5}
+#actionOptions button{display:block;width:100%;text-align:left;border:0;background:white;color:#475674;padding:10px;border-radius:5px;font:inherit}
+#actionOptions button:hover,#actionOptions button:focus-visible{background:#edf2ff}
+#actionOptions button[data-action=delete]{color:#bd3b50}
+.page-heading{gap:12px;flex-wrap:wrap}
+.profiles-panel .panel-heading h2{font-size:16px}
+.profiles-panel .search{width:340px;max-width:70%}
+#profileTable td:last-child{white-space:nowrap}
+
+/* Let the profile list fill the available workspace at every window size. */
+html,body{height:100%;overflow:hidden}
+main{height:100dvh;min-width:0;display:flex;flex-direction:column}
+.topbar{height:48px;flex-shrink:0;padding-inline:16px}
+.page{width:100%;max-width:none;margin:0;padding:12px;flex:1;min-height:0;display:flex;flex-direction:column}
+.page-heading{flex-shrink:0;margin-bottom:12px}
+.profiles-panel{flex:1;min-height:0;display:flex;flex-direction:column}
+.profiles-panel .panel-heading{flex-shrink:0;padding:12px 16px}
+.profiles-panel .table-wrap{flex:1;min-height:0;max-height:none;overflow:auto}
+.table-footer{flex-shrink:0;padding:10px 16px}
+.page-footnote{flex-shrink:0;margin:8px 0 0;font-size:9px}
+.empty-state{flex-shrink:1;min-height:0;overflow:auto;padding:20px}
+#profileTable{min-width:1250px;width:100%}
+#profileTable th:nth-child(1){width:3%}
+#profileTable th:nth-child(2){width:4%}
+#profileTable th:nth-child(3){width:3%}
+#profileTable th:nth-child(4){width:8%}
+#profileTable th:nth-child(5){width:14%}
+#profileTable th:nth-child(6){width:8%}
+#profileTable th:nth-child(7){width:12%}
+#profileTable th:nth-child(8){width:10%}
+#profileTable th:nth-child(10){width:5%}
+#profileTable th:nth-child(11),#profileTable th:nth-child(12){width:8%}
+#profileTable th:nth-child(13){width:7%}
+#profileTable td{height:44px;padding-block:7px}
+.profiles-panel{border-color:#becadb}
+#profileTable{border:1px solid #c8d2e1}
+#profileTable th,#profileTable td{border:1px solid #d4dce8}
+#profileTable thead th{background:#eef2f8;color:#42536d}
+#profileTable tbody tr:hover td{background:#e8f1ff}
+#profileTable tbody tr.selected-row td{background:#dce9ff}
+#profileTable tbody tr.selected-row:hover td{background:#ccdefa}
+#actionOptions.context-actions{position:fixed;z-index:20}
+.custom-window-size{display:flex;gap:12px;margin-top:10px;font-size:11px}
+.custom-window-size[hidden]{display:none}
+.custom-window-size>span{flex:1;min-width:0}
+#openQueueControls{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-shrink:0;font-size:12px;color:#64718a}
+#openQueueControls[hidden]{display:none}
+#threadLimit{width:65px;margin-left:6px;padding:7px;border:1px solid #d4dce8;border-radius:5px}
+#openQueueStatus{overflow-wrap:anywhere}
+
+#profileTable th:nth-child(9){width:8%}
+#profileTable th:nth-child(5){width:12%}
+#profileTable th:nth-child(7){width:10%}
+#profileTable th:nth-child(11),#profileTable th:nth-child(12){width:6%}
+#profileTable{min-width:1360px}

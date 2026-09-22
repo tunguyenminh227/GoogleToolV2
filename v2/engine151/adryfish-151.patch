@@ -1,0 +1,2810 @@
+diff --git a/chrome/browser/about_flags.cc b/chrome/browser/about_flags.cc
+--- a/chrome/browser/about_flags.cc
++++ b/chrome/browser/about_flags.cc
+@@ -205,6 +205,7 @@
+ #include "components/translate/core/common/translate_util.h"
+ #include "components/trusted_vault/features.h"
+ #include "components/ui_devtools/switches.h"
++#include "components/ungoogled/ungoogled_switches.h"
+ #include "components/variations/variations_switches.h"
+ #include "components/version_info/channel.h"
+ #include "components/version_info/version_info.h"
+@@ -4751,7 +4752,13 @@
+ // calculate and verify checksum.
+ //
+ // When adding a new choice, add it to the end of the list.
++#include "chrome/browser/ungoogled_flag_choices.h"
++#include "chrome/browser/bromite_flag_choices.h"
++#include "chrome/browser/ungoogled_platform_flag_choices.h"
+ const FeatureEntry kFeatureEntries[] = {
++#include "chrome/browser/ungoogled_flag_entries.h"
++#include "chrome/browser/bromite_flag_entries.h"
++#include "chrome/browser/ungoogled_platform_flag_entries.h"
+ // Include generated flags for flag unexpiry; see //docs/flag_expiry.md and
+ // //tools/flags/generate_unexpire_flags.py.
+ #include "build/chromeos_buildflags.h"
+diff --git a/chrome/browser/bromite_flag_choices.h b/chrome/browser/bromite_flag_choices.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/bromite_flag_choices.h
+@@ -0,0 +1,7 @@
++// Copyright (c) 2020 The ungoogled-chromium Authors. All rights reserved.
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_BROMITE_FLAG_CHOICES_H_
++#define CHROME_BROWSER_BROMITE_FLAG_CHOICES_H_
++#endif  // CHROME_BROWSER_BROMITE_FLAG_CHOICES_H_
+diff --git a/chrome/browser/bromite_flag_entries.h b/chrome/browser/bromite_flag_entries.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/bromite_flag_entries.h
+@@ -0,0 +1,19 @@
++// Copyright (c) 2020 The ungoogled-chromium Authors. All rights reserved.
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_BROMITE_FLAG_ENTRIES_H_
++#define CHROME_BROWSER_BROMITE_FLAG_ENTRIES_H_
++    {"fingerprinting-client-rects-noise",
++     "Enable get*ClientRects() fingerprint deception",
++     "Scale the output values of Range::getClientRects() and Element::getBoundingClientRect() with a randomly selected factor in the range -0.0003% to 0.0003%, which are recomputed on every document initialization. ungoogled-chromium flag, Bromite feature.",
++     kOsAll, SINGLE_VALUE_TYPE(switches::kFingerprintingClientRectsNoise)},
++    {"fingerprinting-canvas-measuretext-noise",
++     "Enable Canvas::measureText() fingerprint deception",
++     "Scale the output values of Canvas::measureText() with a randomly selected factor in the range -0.0003% to 0.0003%, which are recomputed on every document initialization. ungoogled-chromium flag, Bromite feature.",
++     kOsAll, SINGLE_VALUE_TYPE(switches::kFingerprintingCanvasMeasureTextNoise)},
++    {"fingerprinting-canvas-image-data-noise",
++     "Enable Canvas image data fingerprint deception",
++     "Modify Canvas image data using the configured fingerprint seed.",
++     kOsAll, SINGLE_VALUE_TYPE(switches::kFingerprintingCanvasImageDataNoise)},
++#endif  // CHROME_BROWSER_BROMITE_FLAG_ENTRIES_H_
+diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -2986,6 +2986,7 @@
+     "//third_party/libyuv",
+     "//third_party/metrics_proto",
+     "//third_party/re2",
++    "//components/ungoogled:ungoogled_switches",
+     "//third_party/webrtc_overrides:webrtc_component",
+     "//third_party/widevine/cdm:buildflags",
+     "//third_party/widevine/cdm:headers",
+diff --git a/chrome/browser/ungoogled_flag_choices.h b/chrome/browser/ungoogled_flag_choices.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ungoogled_flag_choices.h
+@@ -0,0 +1,7 @@
++// Copyright (c) 2020 The ungoogled-chromium Authors. All rights reserved.
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UNGOOGLED_FLAG_CHOICES_H_
++#define CHROME_BROWSER_UNGOOGLED_FLAG_CHOICES_H_
++#endif  // CHROME_BROWSER_UNGOOGLED_FLAG_CHOICES_H_
+diff --git a/chrome/browser/ungoogled_flag_entries.h b/chrome/browser/ungoogled_flag_entries.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ungoogled_flag_entries.h
+@@ -0,0 +1,7 @@
++// Copyright (c) 2020 The ungoogled-chromium Authors. All rights reserved.
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UNGOOGLED_FLAG_ENTRIES_H_
++#define CHROME_BROWSER_UNGOOGLED_FLAG_ENTRIES_H_
++#endif  // CHROME_BROWSER_UNGOOGLED_FLAG_ENTRIES_H_
+diff --git a/chrome/browser/ungoogled_platform_flag_choices.h b/chrome/browser/ungoogled_platform_flag_choices.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ungoogled_platform_flag_choices.h
+@@ -0,0 +1,7 @@
++// Copyright (c) 2020 The ungoogled-chromium Authors. All rights reserved.
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UNGOOGLED_PLATFORM_FLAG_CHOICES_H_
++#define CHROME_BROWSER_UNGOOGLED_PLATFORM_FLAG_CHOICES_H_
++#endif  // CHROME_BROWSER_UNGOOGLED_PLATFORM_FLAG_CHOICES_H_
+diff --git a/chrome/browser/ungoogled_platform_flag_entries.h b/chrome/browser/ungoogled_platform_flag_entries.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ungoogled_platform_flag_entries.h
+@@ -0,0 +1,7 @@
++// Copyright (c) 2020 The ungoogled-chromium Authors. All rights reserved.
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UNGOOGLED_PLATFORM_FLAG_ENTRIES_H_
++#define CHROME_BROWSER_UNGOOGLED_PLATFORM_FLAG_ENTRIES_H_
++#endif  // CHROME_BROWSER_UNGOOGLED_PLATFORM_FLAG_ENTRIES_H_
+diff --git a/components/embedder_support/BUILD.gn b/components/embedder_support/BUILD.gn
+--- a/components/embedder_support/BUILD.gn
++++ b/components/embedder_support/BUILD.gn
+@@ -56,6 +56,7 @@
+   ]
+ 
+   deps = [
++    "//components/ungoogled:ungoogled_switches",
+     ":embedder_support",
+     "//build:branding_buildflags",
+     "//components/policy/core/common",
+diff --git a/components/embedder_support/user_agent_utils.cc b/components/embedder_support/user_agent_utils.cc
+--- a/components/embedder_support/user_agent_utils.cc
++++ b/components/embedder_support/user_agent_utils.cc
+@@ -30,6 +30,7 @@
+ #include "components/embedder_support/switches.h"
+ #include "components/policy/core/common/policy_pref_names.h"
+ #include "components/prefs/pref_service.h"
++#include "components/ungoogled/ungoogled_switches.h"
+ #include "components/version_info/version_info.h"
+ #include "net/http/http_util.h"
+ #include "third_party/blink/public/common/features.h"
+@@ -215,9 +216,6 @@
+ // depending on the Reduce User-Agent reduction phase features.
+ std::string GetUserAgentInternal() {
+   std::string product = GetProductAndVersion();
+-  if (base::CommandLine::ForCurrentProcess()->HasSwitch(kHeadless)) {
+-    product.insert(0, "Headless");
+-  }
+ 
+ #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
+   if (base::CommandLine::ForCurrentProcess()->HasSwitch(kUseMobileUserAgent)) {
+@@ -225,9 +223,11 @@
+   }
+ #endif
+ 
+-  return ShouldSendUserAgentUnifiedPlatform()
++  std::string user_agent = ShouldSendUserAgentUnifiedPlatform()
+              ? BuildUnifiedPlatformUserAgentFromProduct(product)
+              : BuildUserAgentFromProduct(product);
++  user_agent += blink::GetUserAgentFingerprintBrandInfo();
++  return user_agent;
+ }
+ 
+ // Generate random order list based on the input size and seed.
+@@ -279,6 +279,19 @@
+ }
+ 
+ std::string GetUserAgentPlatform() {
++const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++if (command_line->HasSwitch(switches::kFingerprintPlatform)) {
++  std::string platform_value = base::ToLowerASCII(command_line->GetSwitchValueASCII(switches::kFingerprintPlatform));
++
++  // 判断自定义平台
++  if (platform_value == "windows") {
++    return "";
++  } else if (platform_value == "linux") {
++    return "X11; ";
++  } else if (platform_value == "macos") {
++    return "Macintosh; ";
++  }
++}
+ #if BUILDFLAG(IS_WIN)
+   return "";
+ #elif BUILDFLAG(IS_MAC)
+@@ -299,6 +312,14 @@
+ }
+ 
+ std::string GetUnifiedPlatform() {
++  const auto* command_line = base::CommandLine::ForCurrentProcess();
++  if (command_line->HasSwitch(switches::kFingerprintPlatform)) {
++    const auto platform = base::ToLowerASCII(
++        command_line->GetSwitchValueASCII(switches::kFingerprintPlatform));
++    if (platform == "windows") return "Windows NT 10.0; Win64; x64";
++    if (platform == "linux") return "X11; Linux x86_64";
++    if (platform == "macos") return "Macintosh; Intel Mac OS X 10_15_7";
++  }
+ #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_CHROMEOS)
+   // This constant is only used on Android (desktop) and Linux.
+   constexpr char kUnifiedPlatformChromeOSX64[] = "X11; CrOS x86_64 14541.0.0";
+diff --git a/components/ungoogled/BUILD.gn b/components/ungoogled/BUILD.gn
+new file mode 100644
+--- /dev/null
++++ b/components/ungoogled/BUILD.gn
+@@ -0,0 +1,15 @@
++# Copyright (c) 2020 The ungoogled-chromium Authors. All rights reserved.
++# Use of this source code is governed by a BSD-style license that can be
++# found in the LICENSE file.
++
++component("ungoogled_switches") {
++  sources = [
++    "fingerprint_data.h",
++    "ungoogled_switches.h",
++    "ungoogled_switches.cc",
++  ]
++
++  defines = [ "IS_UNGOOGLED_IMPL" ]
++
++  deps = [ "//base" ]
++}
+diff --git a/components/ungoogled/fingerprint_data.h b/components/ungoogled/fingerprint_data.h
+new file mode 100644
+--- /dev/null
++++ b/components/ungoogled/fingerprint_data.h
+@@ -0,0 +1,169 @@
++// Copyright (c) 2020 The ungoogled-chromium Authors. All rights reserved.
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++// Fingerprint data constants for browser/platform spoofing.
++
++#ifndef COMPONENTS_UNGOOGLED_FINGERPRINT_DATA_H_
++#define COMPONENTS_UNGOOGLED_FINGERPRINT_DATA_H_
++
++namespace ungoogled {
++namespace fingerprint {
++
++// =============================================================================
++// Browser Display Names
++// =============================================================================
++
++constexpr const char* kChromeDisplayName = "Google Chrome";
++constexpr const char* kEdgeDisplayName = "Microsoft Edge";
++constexpr const char* kOperaDisplayName = "Opera";
++constexpr const char* kVivaldiDisplayName = "Vivaldi";
++
++// =============================================================================
++// Browser Default Versions
++// =============================================================================
++
++// Chromium version list (for seed-based selection)
++constexpr const char* kChromiumVersions[] = {
++    "151.0.7922.173"
++};
++
++// Default versions for Client Hints (Sec-CH-UA)
++constexpr const char* kChromeDefaultVersion = "151.0.7922.173";
++constexpr const char* kEdgeDefaultVersion = "144.0.3719.141";
++constexpr const char* kOperaDefaultVersion = "129.0.5818.0";
++constexpr const char* kVivaldiDefaultVersion = "7.8.3952.73";
++
++// Default versions for User-Agent string suffix
++constexpr const char* kEdgeUAVersion = "144.0.0.0";
++constexpr const char* kOperaUAVersion = "129.0.0.0";
++constexpr const char* kVivaldiUAVersion = "7.8.3952.73";
++
++// User-Agent string suffixes
++constexpr const char* kEdgeUASuffix = " Edg/";
++constexpr const char* kOperaUASuffix = " OPR/";
++constexpr const char* kVivaldiUASuffix = " Vivaldi/";
++
++// =============================================================================
++// Platform Constants
++// =============================================================================
++
++// Platform names
++constexpr const char* kWindowsPlatform = "Windows";
++constexpr const char* kLinuxPlatform = "Linux";
++constexpr const char* kMacOSPlatform = "macOS";
++
++// Platform version arrays (most common first, for seed-based selection)
++constexpr const char* kWindowsVersions[] = {"19.0.0", "15.0.0"};
++constexpr const char* kLinuxVersions[] = {"6.14.0", "6.8.0"};
++constexpr const char* kMacOSVersions[] = {
++    "15.5.0", "15.4.1", "15.4.0", "15.3.2", "15.3.1",
++    "15.3.0", "15.2.0", "15.1.1", "15.1.0", "15.0.1"
++};
++
++// Default architectures
++constexpr const char* kX86Architecture = "x86";
++constexpr const char* kArmArchitecture = "arm";
++
++// =============================================================================
++// GPU Constants
++// =============================================================================
++
++// GPU suffix strings
++constexpr const char* kWindowsGpuSuffix = "Direct3D11 vs_5_0 ps_5_0, D3D11";
++constexpr const char* kLinuxGpuSuffix = "/PCIe/SSE2, OpenGL 4.5.0";
++
++// GPU Vendor strings
++constexpr const char* kWindowsVendorString = "NVIDIA";
++constexpr const char* kLinuxVendorString = "NVIDIA Corporation";
++
++// MacOS GPU models
++constexpr const char* kMacosGpuModels[] = {
++    "M1",
++    "M1 Pro",
++    "M2",
++    "M2 Max",
++    "M2 Pro",
++    "M3",
++    "M3 Max",
++    "M3 Pro",
++    "M4",
++    "M4 Max",
++    "M4 Pro"
++};
++
++constexpr size_t kMacosGpuModelCount = sizeof(kMacosGpuModels) / sizeof(kMacosGpuModels[0]);
++
++// GPU model info structure
++struct GpuModelInfo {
++  const char* model_name;
++  const char* device_id;
++};
++
++// Windows/Linux GPU models (RTX 30-50 series)
++constexpr GpuModelInfo kGpuModels[] = {
++    {"GeForce RTX 3050", "0x00002507"},
++    {"GeForce RTX 3050", "0x00002582"},
++    {"GeForce RTX 3050 6GB Laptop GPU", "0x000025EC"},
++    {"GeForce RTX 3050 Laptop GPU", "0x000025A2"},
++    {"GeForce RTX 3050 Ti Laptop GPU", "0x000025A0"},
++    {"GeForce RTX 3060", "0x00002487"},
++    {"GeForce RTX 3060", "0x00002503"},
++    {"GeForce RTX 3060", "0x00002504"},
++    {"GeForce RTX 3060 Laptop GPU", "0x00002520"},
++    {"GeForce RTX 3060 Laptop GPU", "0x00002560"},
++    {"GeForce RTX 3060 Ti", "0x00002486"},
++    {"GeForce RTX 3060 Ti", "0x00002489"},
++    {"GeForce RTX 3060 Ti", "0x000024C9"},
++    {"GeForce RTX 3070", "0x00002484"},
++    {"GeForce RTX 3070", "0x00002488"},
++    {"GeForce RTX 3070 Ti", "0x00002482"},
++    {"GeForce RTX 3070 Ti Laptop GPU", "0x000024A0"},
++    {"GeForce RTX 3080", "0x00002206"},
++    {"GeForce RTX 3080", "0x0000220A"},
++    {"GeForce RTX 3080", "0x00002216"},
++    {"GeForce RTX 3080 Laptop GPU", "0x0000249C"},
++    {"GeForce RTX 3080 Laptop GPU", "0x000024DC"},
++    {"GeForce RTX 3080 Ti", "0x00002208"},
++    {"GeForce RTX 3080 Ti Laptop GPU", "0x00002420"},
++    {"GeForce RTX 3080 Ti Laptop GPU", "0x00002460"},
++    {"GeForce RTX 3090", "0x00002204"},
++    {"GeForce RTX 3090 Ti", "0x00002203"},
++    {"GeForce RTX 4050 Laptop GPU", "0x000028A1"},
++    {"GeForce RTX 4050 Laptop GPU", "0x000028E1"},
++    {"GeForce RTX 4060", "0x00002882"},
++    {"GeForce RTX 4060 Laptop GPU", "0x000028A0"},
++    {"GeForce RTX 4060 Laptop GPU", "0x000028E0"},
++    {"GeForce RTX 4060 Ti", "0x00002803"},
++    {"GeForce RTX 4060 Ti", "0x00002805"},
++    {"GeForce RTX 4070", "0x00002786"},
++    {"GeForce RTX 4070 Laptop GPU", "0x00002820"},
++    {"GeForce RTX 4070 Laptop GPU", "0x00002860"},
++    {"GeForce RTX 4070 SUPER", "0x00002783"},
++    {"GeForce RTX 4070 Ti", "0x00002782"},
++    {"GeForce RTX 4070 Ti SUPER", "0x00002705"},
++    {"GeForce RTX 4080", "0x00002704"},
++    {"GeForce RTX 4080 Laptop GPU", "0x000027A0"},
++    {"GeForce RTX 4080 Laptop GPU", "0x000027E0"},
++    {"GeForce RTX 4080 SUPER", "0x00002702"},
++    {"GeForce RTX 4090", "0x00002684"},
++    {"GeForce RTX 4090 Laptop GPU", "0x00002717"},
++    {"GeForce RTX 4090 Laptop GPU", "0x00002757"},
++    {"GeForce RTX 5070", "0x00002F04"},
++    {"GeForce RTX 5070 Ti", "0x00002C05"},
++    {"GeForce RTX 5070 Ti Laptop GPU", "0x00002F18"},
++    {"GeForce RTX 5070 Ti Laptop GPU", "0x00002F58"},
++    {"GeForce RTX 5080", "0x00002C02"},
++    {"GeForce RTX 5080 Laptop GPU", "0x00002C19"},
++    {"GeForce RTX 5080 Laptop GPU", "0x00002C59"},
++    {"GeForce RTX 5090", "0x00002B85"},
++    {"GeForce RTX 5090 Laptop GPU", "0x00002C18"},
++    {"GeForce RTX 5090 Laptop GPU", "0x00002C58"},
++};
++
++constexpr size_t kGpuModelCount = sizeof(kGpuModels) / sizeof(kGpuModels[0]);
++
++}  // namespace fingerprint
++}  // namespace ungoogled
++
++#endif  // COMPONENTS_UNGOOGLED_FINGERPRINT_DATA_H_
+diff --git a/components/ungoogled/ungoogled_switches.cc b/components/ungoogled/ungoogled_switches.cc
+new file mode 100644
+--- /dev/null
++++ b/components/ungoogled/ungoogled_switches.cc
+@@ -0,0 +1,54 @@
++// Copyright (c) 2020 The ungoogled-chromium Authors. All rights reserved.
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "components/ungoogled/ungoogled_switches.h"
++
++namespace switches {
++
++// Enable fingerprinting deception for getClientRects and getBoundingClientRect
++const char kFingerprintingClientRectsNoise[] = "fingerprinting-client-rects-noise";
++
++// Enable fingerprinting deception for measureText
++const char kFingerprintingCanvasMeasureTextNoise[] = "fingerprinting-canvas-measuretext-noise";
++
++// Enable fingerprinting deception for Canvas image data
++const char kFingerprintingCanvasImageDataNoise[] = "fingerprinting-canvas-image-data-noise";
++
++// Specify the fingerprint seed
++const char kFingerprint[] = "fingerprint";
++
++// Specify the browser brand
++const char kFingerprintBrand[] = "fingerprint-brand";
++
++// Specify the browser version
++const char kFingerprintBrandVersion[] = "fingerprint-brand-version";
++
++// Disable fingerprint spoofing
++const char kDisableSpoofing[] = "disable-spoofing";
++
++// Specify the screen width
++const char kFingerprintScreenWidth[] = "fingerprint-screen-width";
++
++// Specify the screen height
++const char kFingerprintScreenHeight[] = "fingerprint-screen-height";
++
++// Specify the device scale factor
++const char kFingerprintDeviceScaleFactor[] = "fingerprint-device-scale-factor";
++
++// Specify the number of CPU cores
++const char kFingerprintHardwareConcurrency[] = "fingerprint-hardware-concurrency";
++
++// Specify the operating system type
++const char kFingerprintPlatform[] = "fingerprint-platform";
++
++// Specify the operating system version
++const char kFingerprintPlatformVersion[] = "fingerprint-platform-version";
++
++// Specify the location
++const char kFingerprintLocation[] = "fingerprint-location";
++
++// Specify the timezone
++const char kFingerprintTimezone[] = "timezone";
++
++}  // namespace switches
+diff --git a/components/ungoogled/ungoogled_switches.h b/components/ungoogled/ungoogled_switches.h
+new file mode 100644
+--- /dev/null
++++ b/components/ungoogled/ungoogled_switches.h
+@@ -0,0 +1,32 @@
++// Copyright (c) 2020 The ungoogled-chromium Authors. All rights reserved.
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++// Defines all the fingerprinting command-line switches.
++
++#ifndef THIRD_PARTY_UNGOOGLED_FINGERPRINTING_SWITCHES_H_
++#define THIRD_PARTY_UNGOOGLED_FINGERPRINTING_SWITCHES_H_
++
++#include "base/component_export.h"
++
++namespace switches {
++
++COMPONENT_EXPORT(UNGOOGLED) extern const char kFingerprintingClientRectsNoise[];
++COMPONENT_EXPORT(UNGOOGLED) extern const char kFingerprintingCanvasMeasureTextNoise[];
++COMPONENT_EXPORT(UNGOOGLED) extern const char kFingerprintingCanvasImageDataNoise[];
++
++COMPONENT_EXPORT(UNGOOGLED) extern const char kFingerprint[];
++COMPONENT_EXPORT(UNGOOGLED) extern const char kFingerprintBrand[];
++COMPONENT_EXPORT(UNGOOGLED) extern const char kFingerprintBrandVersion[];
++COMPONENT_EXPORT(UNGOOGLED) extern const char kDisableSpoofing[];
++COMPONENT_EXPORT(UNGOOGLED) extern const char kFingerprintScreenWidth[];
++COMPONENT_EXPORT(UNGOOGLED) extern const char kFingerprintScreenHeight[];
++COMPONENT_EXPORT(UNGOOGLED) extern const char kFingerprintDeviceScaleFactor[];
++COMPONENT_EXPORT(UNGOOGLED) extern const char kFingerprintHardwareConcurrency[];
++COMPONENT_EXPORT(UNGOOGLED) extern const char kFingerprintPlatform[];
++COMPONENT_EXPORT(UNGOOGLED) extern const char kFingerprintPlatformVersion[];
++COMPONENT_EXPORT(UNGOOGLED) extern const char kFingerprintLocation[];
++COMPONENT_EXPORT(UNGOOGLED) extern const char kFingerprintTimezone[];
++}
++
++#endif  // THIRD_PARTY_UNGOOGLED_FINGERPRINTING_SWITCHES_H_
+diff --git a/content/browser/BUILD.gn b/content/browser/BUILD.gn
+--- a/content/browser/BUILD.gn
++++ b/content/browser/BUILD.gn
+@@ -329,6 +329,7 @@
+     "//third_party/re2",
+     "//third_party/snappy",
+     "//third_party/sqlite",
++    "//components/ungoogled:ungoogled_switches",
+     "//third_party/webrtc_overrides:webrtc_component",
+     "//third_party/zlib",
+     "//tools/v8_context_snapshot:buildflags",
+diff --git a/content/browser/client_hints/client_hints.cc b/content/browser/client_hints/client_hints.cc
+--- a/content/browser/client_hints/client_hints.cc
++++ b/content/browser/client_hints/client_hints.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "content/browser/client_hints/client_hints.h"
++#include <functional>
+ 
+ #include <algorithm>
+ #include <optional>
+@@ -710,6 +711,8 @@
+     if (!ua_metadata.has_value())
+       ua_metadata = delegate->GetUserAgentMetadata();
+ 
++    UpdateUserAgentMetadataFingerprint(&ua_metadata.value());
++
+     // The `Sec-CH-UA` client hint is attached to all outgoing requests. This is
+     // (intentionally) different than other client hints.
+     // It's barred behind ShouldAddClientHints to make sure it's controlled by
+diff --git a/content/browser/renderer_host/render_process_host_impl.cc b/content/browser/renderer_host/render_process_host_impl.cc
+--- a/content/browser/renderer_host/render_process_host_impl.cc
++++ b/content/browser/renderer_host/render_process_host_impl.cc
+@@ -84,6 +84,7 @@
+ #include "components/services/storage/public/cpp/quota_error_or.h"
+ #include "components/services/storage/public/mojom/cache_storage_control.mojom.h"
+ #include "components/tracing/common/tracing_switches.h"
++#include "components/ungoogled/ungoogled_switches.h"
+ #include "components/viz/common/switches.h"
+ #include "components/viz/host/gpu_client.h"
+ #include "components/viz/host/host_frame_sink_manager.h"
+@@ -3890,6 +3891,21 @@
+       switches::kEnableWebGLDraftExtensions,
+       switches::kEnableWebGPUDeveloperFeatures,
+       switches::kFileUrlPathAlias,
++      switches::kFingerprintingClientRectsNoise,
++      switches::kFingerprintingCanvasMeasureTextNoise,
++      switches::kFingerprintingCanvasImageDataNoise,
++      switches::kFingerprint,
++      switches::kFingerprintBrand,
++      switches::kFingerprintBrandVersion,
++      switches::kDisableSpoofing,
++      switches::kFingerprintScreenWidth,
++      switches::kFingerprintScreenHeight,
++      switches::kFingerprintDeviceScaleFactor,
++      switches::kFingerprintHardwareConcurrency,
++      switches::kFingerprintPlatform,
++      switches::kFingerprintPlatformVersion,
++      switches::kFingerprintLocation,
++      switches::kFingerprintTimezone,
+       switches::kForceDeviceScaleFactor,
+       switches::kForceDisplayColorProfile,
+       switches::kForceHighContrast,
+diff --git a/content/child/BUILD.gn b/content/child/BUILD.gn
+--- a/content/child/BUILD.gn
++++ b/content/child/BUILD.gn
+@@ -111,6 +111,7 @@
+     "//third_party/blink/public/common:buildflags",
+     "//third_party/blink/public/strings",
+     "//third_party/ced",
++    "//components/ungoogled:ungoogled_switches",
+     "//third_party/zlib/google:compression_utils",
+     "//ui/base",
+     "//ui/events/blink",
+diff --git a/content/child/runtime_features.cc b/content/child/runtime_features.cc
+--- a/content/child/runtime_features.cc
++++ b/content/child/runtime_features.cc
+@@ -43,6 +43,7 @@
+ #include "third_party/blink/public/common/loader/referrer_utils.h"
+ #include "third_party/blink/public/common/switches.h"
+ #include "third_party/blink/public/platform/web_runtime_features.h"
++#include "components/ungoogled/ungoogled_switches.h"
+ #include "ui/accessibility/accessibility_features.h"
+ #include "ui/base/ui_base_features.h"
+ #include "ui/events/blink/blink_features.h"
+@@ -466,6 +467,12 @@
+        true},
+       {wrf::EnableWebAudioBypassOutputBufferingOptOut,
+        blink::switches::kWebAudioBypassOutputBufferingOptOut, true},
++      {wrf::EnableFingerprintingClientRectsNoise,
++       switches::kFingerprintingClientRectsNoise, true},
++      {wrf::EnableFingerprintingCanvasMeasureTextNoise,
++       switches::kFingerprintingCanvasMeasureTextNoise, true},
++      {wrf::EnableFingerprintingCanvasImageDataNoise,
++       switches::kFingerprintingCanvasImageDataNoise, true},
+   };
+ 
+   for (const auto& mapping : switchToFeatureMapping) {
+diff --git a/headless/lib/browser/headless_browser_impl.cc b/headless/lib/browser/headless_browser_impl.cc
+--- a/headless/lib/browser/headless_browser_impl.cc
++++ b/headless/lib/browser/headless_browser_impl.cc
+@@ -64,7 +64,7 @@
+ namespace {
+ 
+ // Product name for building the default user agent string.
+-const char kHeadlessProductName[] = "HeadlessChrome";
++const char kHeadlessProductName[] = "Chrome";
+ 
+ #if defined(HEADLESS_USE_PREFS)
+ const base::FilePath::CharType kLocalStateFilename[] =
+diff --git a/third_party/blink/common/BUILD.gn b/third_party/blink/common/BUILD.gn
+--- a/third_party/blink/common/BUILD.gn
++++ b/third_party/blink/common/BUILD.gn
+@@ -307,6 +307,7 @@
+   ]
+ 
+   deps = [
++    "//components/ungoogled:ungoogled_switches",
+     "//base",
+     "//build:android_buildflags",
+     "//build:chromecast_buildflags",
+diff --git a/third_party/blink/common/user_agent/user_agent_metadata.cc b/third_party/blink/common/user_agent/user_agent_metadata.cc
+--- a/third_party/blink/common/user_agent/user_agent_metadata.cc
++++ b/third_party/blink/common/user_agent/user_agent_metadata.cc
+@@ -3,8 +3,14 @@
+ // found in the LICENSE file.
+ 
+ #include "third_party/blink/public/common/user_agent/user_agent_metadata.h"
++#include "base/command_line.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/string_util.h"
++#include "components/ungoogled/fingerprint_data.h"
++#include "components/ungoogled/ungoogled_switches.h"
+ 
+ #include <algorithm>
++#include <array>
+ 
+ #include "base/containers/span.h"
+ #include "base/pickle.h"
+@@ -23,6 +29,74 @@
+     blink::kMobileFormFactor,  blink::kTabletFormFactor,
+     blink::kXRFormFactor,      blink::kEInkFormFactor,
+     blink::kWatchFormFactor};
++
++// GREASE characters for brand name generation
++constexpr const char* kGreasyChars[] = {
++    " ", "(", ":", "-", ".", "/", ")", ";", "=", "?", "_"
++};
++constexpr const char* kGreasedVersions[] = {"8", "99", "24"};
++
++std::vector<size_t> GetRandomOrder(int seed, size_t size) {
++  if (size == 2u) {
++    return {static_cast<size_t>(seed % 2), static_cast<size_t>((seed + 1) % 2)};
++  } else if (size == 3u) {
++    static constexpr auto orders = std::to_array<std::array<size_t, 3>>({
++        {0, 1, 2}, {0, 2, 1}, {1, 0, 2}, {1, 2, 0}, {2, 0, 1}, {2, 1, 0}
++    });
++    return {orders[seed % 6][0], orders[seed % 6][1], orders[seed % 6][2]};
++  } else {
++    static constexpr auto orders = std::to_array<std::array<size_t, 4>>({
++        {0, 1, 2, 3}, {0, 1, 3, 2}, {0, 2, 1, 3}, {0, 2, 3, 1},
++        {0, 3, 1, 2}, {0, 3, 2, 1}, {1, 0, 2, 3}, {1, 0, 3, 2},
++        {1, 2, 0, 3}, {1, 2, 3, 0}, {1, 3, 0, 2}, {1, 3, 2, 0},
++        {2, 0, 1, 3}, {2, 0, 3, 1}, {2, 1, 0, 3}, {2, 1, 3, 0},
++        {2, 3, 0, 1}, {2, 3, 1, 0}, {3, 0, 1, 2}, {3, 0, 2, 1},
++        {3, 1, 0, 2}, {3, 1, 2, 0}, {3, 2, 0, 1}, {3, 2, 1, 0}
++    });
++    return {orders[seed % 24][0], orders[seed % 24][1],
++            orders[seed % 24][2], orders[seed % 24][3]};
++  }
++}
++
++blink::UserAgentBrandList ShuffleBrandList(
++    blink::UserAgentBrandList brands, int seed) {
++  std::vector<size_t> order = GetRandomOrder(seed, brands.size());
++  blink::UserAgentBrandList shuffled(brands.size());
++  for (size_t i = 0; i < order.size(); i++) {
++    shuffled[order[i]] = brands[i];
++  }
++  return shuffled;
++}
++
++blink::UserAgentBrandVersion GetGreasedBrandVersion(
++    int seed, bool full_version) {
++  std::string brand = std::string("Not") +
++      kGreasyChars[seed % std::size(kGreasyChars)] + "A" +
++      kGreasyChars[(seed + 1) % std::size(kGreasyChars)] + "Brand";
++  std::string version = kGreasedVersions[seed % std::size(kGreasedVersions)];
++  if (full_version) {
++    version += ".0.0.0";
++  }
++  return {brand, version};
++}
++
++blink::UserAgentBrandList GenerateBrandList(
++    int seed,
++    std::optional<std::string> chrome_brand,
++    const std::string& version,
++    bool full_version,
++    std::optional<blink::UserAgentBrandVersion> additional_brand) {
++  blink::UserAgentBrandList brands;
++  brands.push_back(GetGreasedBrandVersion(seed, full_version));
++  brands.push_back({"Chromium", version});
++  if (chrome_brand.has_value()) {
++    brands.push_back({chrome_brand.value(), version});
++  }
++  if (additional_brand.has_value()) {
++    brands.push_back(additional_brand.value());
++  }
++  return ShuffleBrandList(brands, seed);
++}
+ 
+ }  // namespace
+ 
+@@ -232,4 +306,174 @@
+          a.ua_metadata_override == b.ua_metadata_override;
+ }
+ 
++// Get Chromium version based on brand and seed
++// Priority:
++// 1. If brand is Chrome with custom version -> return custom version
++// 2. If brand is not Chrome (Edge/Opera/Vivaldi) -> return latest version
++// 3. If has fingerprint seed -> return kChromiumVersions[seed % size]
++// 4. Otherwise -> return first version in array
++std::string GetChromiumVersion() {
++  using namespace ungoogled::fingerprint;
++  const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++
++  if (command_line->HasSwitch(switches::kFingerprintBrand)) {
++    std::string brand = base::ToLowerASCII(
++        command_line->GetSwitchValueASCII(switches::kFingerprintBrand));
++    // 1. Chrome with custom version
++    if (brand == "chrome" && command_line->HasSwitch(switches::kFingerprintBrandVersion)) {
++      return command_line->GetSwitchValueASCII(switches::kFingerprintBrandVersion);
++    }
++    // 2. Non-Chrome brand (Edge/Opera/Vivaldi) -> use latest Chromium version
++    if (brand != "chrome" && !brand.empty()) {
++      return kChromiumVersions[0];
++    }
++  }
++
++  // 3. Check if has fingerprint seed
++  if (command_line->HasSwitch(switches::kFingerprint)) {
++    int seed = 0;
++    base::StringToInt(
++        command_line->GetSwitchValueASCII(switches::kFingerprint), &seed);
++    return kChromiumVersions[seed % std::size(kChromiumVersions)];
++  }
++
++  // 4. Return first version
++  return kChromiumVersions[0];
++}
++
++// Helper to extract major version from full version string
++std::string GetMajorVersion(const std::string& full_version) {
++  size_t pos = full_version.find('.');
++  return pos != std::string::npos ? full_version.substr(0, pos) : full_version;
++}
++
++// 获取平台版本，基于 fingerprint seed 随机化
++std::string GetPlatformVersion(const std::string& platform) {
++  using namespace ungoogled::fingerprint;
++  const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++
++  // 自定义版本优先
++  if (command_line->HasSwitch(switches::kFingerprintPlatformVersion)) {
++    return command_line->GetSwitchValueASCII(switches::kFingerprintPlatformVersion);
++  }
++
++  int seed = 0;
++  if (command_line->HasSwitch(switches::kFingerprint)) {
++    base::StringToInt(
++        command_line->GetSwitchValueASCII(switches::kFingerprint), &seed);
++  }
++
++  if (platform == "windows") {
++    return kWindowsVersions[seed % std::size(kWindowsVersions)];
++  } else if (platform == "linux") {
++    return kLinuxVersions[seed % std::size(kLinuxVersions)];
++  } else if (platform == "macos") {
++    return kMacOSVersions[seed % std::size(kMacOSVersions)];
++  }
++
++  return "";
++}
++
++void UpdateUserAgentMetadataFingerprint(blink::UserAgentMetadata* metadata) {
++  if (!metadata)
++    return;
++
++  using namespace ungoogled::fingerprint;
++
++  std::string chromium_version = GetChromiumVersion();
++  std::string chromium_major = GetMajorVersion(chromium_version);
++  int seed = 0;
++  base::StringToInt(chromium_major, &seed);
++
++  const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++
++  // Default: only Chromium (no additional brand)
++  std::optional<std::string> chrome_brand = std::nullopt;
++  std::optional<blink::UserAgentBrandVersion> additional_brand_major = std::nullopt;
++  std::optional<blink::UserAgentBrandVersion> additional_brand_full = std::nullopt;
++
++  if (command_line->HasSwitch(switches::kFingerprintBrand)) {
++    std::string brand_name = base::ToLowerASCII(
++        command_line->GetSwitchValueASCII(switches::kFingerprintBrand));
++    std::string custom_version = command_line->HasSwitch(switches::kFingerprintBrandVersion)
++        ? command_line->GetSwitchValueASCII(switches::kFingerprintBrandVersion) : "";
++
++    if (brand_name == "chrome") {
++      chrome_brand = kChromeDisplayName;
++    } else if (brand_name == "edge") {
++      std::string edge_version = custom_version.empty() ? kEdgeDefaultVersion : custom_version;
++      additional_brand_major = {kEdgeDisplayName, GetMajorVersion(edge_version)};
++      additional_brand_full = {kEdgeDisplayName, edge_version};
++    } else if (brand_name == "opera") {
++      std::string opera_version = custom_version.empty() ? kOperaDefaultVersion : custom_version;
++      additional_brand_major = {kOperaDisplayName, GetMajorVersion(opera_version)};
++      additional_brand_full = {kOperaDisplayName, opera_version};
++    } else if (brand_name == "vivaldi") {
++      std::string vivaldi_version = custom_version.empty() ? kVivaldiDefaultVersion : custom_version;
++      additional_brand_major = {kVivaldiDisplayName, GetMajorVersion(vivaldi_version)};
++      additional_brand_full = {kVivaldiDisplayName, vivaldi_version};
++    }
++  }
++
++  metadata->brand_version_list = GenerateBrandList(
++      seed, chrome_brand, chromium_major, false, additional_brand_major);
++
++  metadata->brand_full_version_list = GenerateBrandList(
++      seed, chrome_brand, chromium_version, true, additional_brand_full);
++
++  if (additional_brand_full.has_value()) {
++    metadata->full_version = additional_brand_full->version;
++  } else {
++    metadata->full_version = chromium_version;
++  }
++
++  // Handle platform information
++  if (command_line->HasSwitch(switches::kFingerprintPlatform)) {
++    std::string platform_value = command_line->GetSwitchValueASCII(switches::kFingerprintPlatform);
++    if (platform_value == "windows") {
++      metadata->platform = kWindowsPlatform;
++      metadata->platform_version = GetPlatformVersion("windows");
++      metadata->architecture = kX86Architecture;
++    } else if (platform_value == "linux") {
++      metadata->platform = kLinuxPlatform;
++      metadata->platform_version = GetPlatformVersion("linux");
++      metadata->architecture = kX86Architecture;
++    } else if (platform_value == "macos") {
++      metadata->platform = kMacOSPlatform;
++      metadata->platform_version = GetPlatformVersion("macos");
++      metadata->architecture = kArmArchitecture;
++    }
++  }
++}
++
++std::string GetUserAgentFingerprintBrandInfo() {
++  using namespace ungoogled::fingerprint;
++
++  const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++
++  if (!command_line->HasSwitch(switches::kFingerprintBrand)) {
++    return "";
++  }
++
++  std::string brand = base::ToLowerASCII(
++      command_line->GetSwitchValueASCII(switches::kFingerprintBrand));
++  std::string version = command_line->HasSwitch(switches::kFingerprintBrandVersion)
++      ? command_line->GetSwitchValueASCII(switches::kFingerprintBrandVersion)
++      : "";
++
++  if (brand == "chrome") {
++    return "";
++  } else if (brand == "edge") {
++    return std::string(kEdgeUASuffix) + (version.empty() ? kEdgeUAVersion : version);
++  } else if (brand == "opera") {
++    return std::string(kOperaUASuffix) + (version.empty() ? kOperaUAVersion : version);
++  } else if (brand == "vivaldi") {
++    return std::string(kVivaldiUASuffix) + (version.empty() ? kVivaldiUAVersion : version);
++  } else if (!brand.empty()) {
++    return " " + brand + "/" + (version.empty() ? brand : version);
++  }
++
++  return "";
++}
++
+ }  // namespace blink
+diff --git a/third_party/blink/public/common/user_agent/user_agent_metadata.h b/third_party/blink/public/common/user_agent/user_agent_metadata.h
+--- a/third_party/blink/public/common/user_agent/user_agent_metadata.h
++++ b/third_party/blink/public/common/user_agent/user_agent_metadata.h
+@@ -106,6 +106,10 @@
+ bool BLINK_COMMON_EXPORT operator==(const UserAgentOverride& a,
+                                     const UserAgentOverride& b);
+ 
++
++BLINK_COMMON_EXPORT void UpdateUserAgentMetadataFingerprint(UserAgentMetadata* metadata);
++
++BLINK_COMMON_EXPORT std::string GetUserAgentFingerprintBrandInfo();
+ }  // namespace blink
+ 
+ #endif  // THIRD_PARTY_BLINK_PUBLIC_COMMON_USER_AGENT_USER_AGENT_METADATA_H_
+diff --git a/third_party/blink/public/platform/web_runtime_features.h b/third_party/blink/public/platform/web_runtime_features.h
+--- a/third_party/blink/public/platform/web_runtime_features.h
++++ b/third_party/blink/public/platform/web_runtime_features.h
+@@ -71,6 +71,10 @@
+ 
+   static void EnableLocalNetworkAccessWebRTC(bool);
+ 
++  static void EnableFingerprintingClientRectsNoise(bool);
++  static void EnableFingerprintingCanvasMeasureTextNoise(bool);
++  static void EnableFingerprintingCanvasImageDataNoise(bool);
++
+   WebRuntimeFeatures() = delete;
+ };
+ 
+diff --git a/third_party/blink/renderer/core/dom/document.cc b/third_party/blink/renderer/core/dom/document.cc
+--- a/third_party/blink/renderer/core/dom/document.cc
++++ b/third_party/blink/renderer/core/dom/document.cc
+@@ -28,6 +28,8 @@
+  */
+ 
+ #include "third_party/blink/renderer/core/dom/document.h"
++#include <functional>
++#include "base/command_line.h"
+ 
+ #include <algorithm>
+ #include <memory>
+@@ -41,6 +43,7 @@
+ #include "base/i18n/time_formatting.h"
+ #include "base/metrics/histogram_functions.h"
+ #include "base/notreached.h"
++#include "base/rand_util.h"
+ #include "base/task/single_thread_task_runner.h"
+ #include "base/time/time.h"
+ #include "base/trace_event/trace_event.h"
+@@ -48,6 +51,7 @@
+ #include "cc/animation/animation_timeline.h"
+ #include "cc/input/overscroll_behavior.h"
+ #include "cc/input/scroll_snap_data.h"
++#include "components/ungoogled/ungoogled_switches.h"
+ #include "mojo/public/cpp/bindings/lib/wtf_hash_util.h"
+ #include "mojo/public/cpp/bindings/pending_remote.h"
+ #include "mojo/public/cpp/bindings/remote.h"
+@@ -1049,6 +1053,14 @@
+       data_(MakeGarbageCollected<DocumentData>(GetExecutionContext())) {
+   TRACE_EVENT("blink", "Document::Document", perfetto::Flow::FromPointer(this));
+   DCHECK(agent_);
++  const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++  if (command_line->HasSwitch(switches::kFingerprint)) {
++    const std::string seed = command_line->GetSwitchValueASCII(switches::kFingerprint);
++    const uint32_t x = static_cast<uint32_t>(std::hash<std::string>{}(seed + "offset_x"));
++    const uint32_t y = static_cast<uint32_t>(std::hash<std::string>{}(seed + "offset_y"));
++    noise_factor_x_ = (x / 4294967295.0 - 0.5) * 0.002;
++    noise_factor_y_ = (y / 4294967295.0 - 0.5) * 0.002;
++  }
+   if (base::FeatureList::IsEnabled(features::kDelayAsyncScriptExecution) &&
+       features::kDelayAsyncScriptExecutionDelayByDefaultParam.Get()) {
+     script_runner_delayer_->Activate();
+@@ -1176,6 +1188,14 @@
+   }
+   Node* const shadow_host = tree_scope.AncestorInThisScope(anchor_node);
+   return Position::BeforeNode(*shadow_host);
++}
++
++double Document::GetNoiseFactorX() {
++  return noise_factor_x_;
++}
++
++double Document::GetNoiseFactorY() {
++  return noise_factor_y_;
+ }
+ 
+ SelectorQueryCache& Document::GetSelectorQueryCache() {
+diff --git a/third_party/blink/renderer/core/dom/document.h b/third_party/blink/renderer/core/dom/document.h
+--- a/third_party/blink/renderer/core/dom/document.h
++++ b/third_party/blink/renderer/core/dom/document.h
+@@ -573,6 +573,10 @@
+     has_xml_declaration_ = has_xml_declaration ? 1 : 0;
+   }
+ 
++  // Values for get*ClientRect fingerprint deception
++  double GetNoiseFactorX();
++  double GetNoiseFactorY();
++
+   V8VisibilityState visibilityState() const;
+   String visibilityStateAsString() const;
+   bool IsPageVisible() const;
+@@ -2896,6 +2900,9 @@
+ 
+   base::ElapsedTimer start_time_;
+ 
++  double noise_factor_x_ = 0;
++  double noise_factor_y_ = 0;
++
+   // The script runner is used to run scripts of the following scheduling types:
+   // - ScriptSchedulingType::kAsync
+   // - ScriptSchedulingType::kInOrder
+diff --git a/third_party/blink/renderer/core/dom/element.cc b/third_party/blink/renderer/core/dom/element.cc
+--- a/third_party/blink/renderer/core/dom/element.cc
++++ b/third_party/blink/renderer/core/dom/element.cc
+@@ -25,6 +25,8 @@
+  */
+ 
+ #include "third_party/blink/renderer/core/dom/element.h"
++#include "base/command_line.h"
++#include "components/ungoogled/ungoogled_switches.h"
+ 
+ #include <algorithm>
+ #include <bitset>
+@@ -3452,6 +3454,28 @@
+   }
+ }
+ 
++bool Element::ShouldSkipClientRectsOffset() const {
++  if (!GetLayoutObject() || !GetLayoutObject()->Style()) {
++    return false;
++  }
++
++  const ComputedStyle& style = *GetLayoutObject()->Style();
++
++  // 检查是否为绝对定位
++  if (style.GetPosition() != EPosition::kAbsolute) {
++    return false;
++  }
++
++  // 检查top和left是否都是"确定的"值（Zero或Fixed）
++  const Length& top = style.Top();
++  const Length& left = style.Left();
++
++  bool top_is_deterministic = top.IsZero() || top.IsFixed();
++  bool left_is_deterministic = left.IsZero() || left.IsFixed();
++
++  return (top_is_deterministic && left_is_deterministic);
++}
++
+ DOMRectList* Element::getClientRects() {
+   Vector<gfx::RectF> rects = GetClientRectsNoAdjustment();
+   if (rects.empty()) {
+@@ -3462,6 +3486,16 @@
+   for (auto& rect : rects) {
+     GetDocument().AdjustRectForScrollAndAbsoluteZoom(rect,
+                                                      *element_layout_object);
++  }
++  const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++  if (command_line->HasSwitch(switches::kFingerprint) &&
++      (!command_line->HasSwitch(switches::kDisableSpoofing) ||
++       command_line->GetSwitchValueASCII(switches::kDisableSpoofing).find("clientrects") == std::string::npos)) {
++    if (!ShouldSkipClientRectsOffset()) {
++      for (auto& rect : rects) {
++        rect.Offset(GetDocument().GetNoiseFactorX(), GetDocument().GetNoiseFactorY());
++      }
++    }
+   }
+   return MakeGarbageCollected<DOMRectList>(rects);
+ }
+@@ -3480,6 +3514,9 @@
+   }
+   Vector<gfx::RectF> result;
+   for (auto& quad : quads) {
++    if (RuntimeEnabledFeatures::FingerprintingClientRectsNoiseEnabled()) {
++      quad.Scale(GetDocument().GetNoiseFactorX(), GetDocument().GetNoiseFactorY());
++    }
+     result.emplace_back(quad.BoundingBox());
+   }
+   return result;
+@@ -3509,6 +3546,14 @@
+   DCHECK(element_layout_object);
+   GetDocument().AdjustRectForScrollAndAbsoluteZoom(result,
+                                                    *element_layout_object);
++  const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++  if (command_line->HasSwitch(switches::kFingerprint) &&
++      (!command_line->HasSwitch(switches::kDisableSpoofing) ||
++       command_line->GetSwitchValueASCII(switches::kDisableSpoofing).find("clientrects") == std::string::npos)) {
++    if (!ShouldSkipClientRectsOffset()) {
++      result.Offset(GetDocument().GetNoiseFactorX(), GetDocument().GetNoiseFactorY());
++    }
++  }
+   return result;
+ }
+ 
+@@ -7831,6 +7876,11 @@
+   return root && root->GetMode() == ShadowRootMode::kOpen ? root : nullptr;
+ }
+ 
++ShadowRoot* Element::FakeShadowRoot() const {
++  ShadowRoot* root = GetShadowRoot();
++  return root;
++}
++
+ ShadowRoot* Element::ClosedShadowRoot() const {
+   ShadowRoot* root = GetShadowRoot();
+   if (!root) {
+diff --git a/third_party/blink/renderer/core/dom/element.h b/third_party/blink/renderer/core/dom/element.h
+--- a/third_party/blink/renderer/core/dom/element.h
++++ b/third_party/blink/renderer/core/dom/element.h
+@@ -633,6 +633,8 @@
+   // TODO(crbug.com/41417572): This method should replace the above method.
+   gfx::Rect VisibleBoundsRespectingClipsInLocalRoot() const;
+ 
++  bool ShouldSkipClientRectsOffset() const;
++
+   DOMRectList* getClientRects();
+   // Returns a list of clients Rects in zoomed pixel units.
+   Vector<gfx::RectF> GetClientRectsNoAdjustment();
+@@ -1098,6 +1100,7 @@
+     return HasShadowRoot() ? GetShadowRootInternal() : nullptr;
+   }
+   ShadowRoot* OpenShadowRoot() const;
++  ShadowRoot* FakeShadowRoot() const;
+   ShadowRoot* ClosedShadowRoot() const;
+   ShadowRoot* AuthorShadowRoot() const;
+   ShadowRoot* UserAgentShadowRoot() const;
+diff --git a/third_party/blink/renderer/core/dom/element.idl b/third_party/blink/renderer/core/dom/element.idl
+--- a/third_party/blink/renderer/core/dom/element.idl
++++ b/third_party/blink/renderer/core/dom/element.idl
+@@ -81,6 +81,7 @@
+ 
+     [RaisesException, MeasureAs=ElementAttachShadow] ShadowRoot attachShadow(ShadowRootInit shadowRootInitDict);
+     [PerWorldBindings, ImplementedAs=OpenShadowRoot] readonly attribute ShadowRoot? shadowRoot;
++    [PerWorldBindings, ImplementedAs=FakeShadowRoot] readonly attribute ShadowRoot? fakeShadowRoot;
+ 
+     [RaisesException] Element? closest(DOMString selectors);
+     [RaisesException] boolean matches(DOMString selectors);
+diff --git a/third_party/blink/renderer/core/dom/range.cc b/third_party/blink/renderer/core/dom/range.cc
+--- a/third_party/blink/renderer/core/dom/range.cc
++++ b/third_party/blink/renderer/core/dom/range.cc
+@@ -23,6 +23,8 @@
+  * Boston, MA 02110-1301, USA.
+  */
+ 
++#include "base/command_line.h"
++#include "components/ungoogled/ungoogled_switches.h"
+ #include "third_party/blink/renderer/core/dom/range.h"
+ 
+ #include "third_party/blink/renderer/core/display_lock/display_lock_document_state.h"
+@@ -1664,6 +1666,15 @@
+   Vector<gfx::QuadF> quads;
+   GetBorderAndTextQuads(quads);
+ 
++  const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++  if (command_line->HasSwitch(switches::kFingerprint) &&
++      (!command_line->HasSwitch(switches::kDisableSpoofing) ||
++       command_line->GetSwitchValueASCII(switches::kDisableSpoofing).find("clientrects") == std::string::npos)) {
++    for (gfx::QuadF& quad : quads) {
++      quad.Offset(owner_document_->GetNoiseFactorX(), owner_document_->GetNoiseFactorY());
++    }
++  }
++
+   return MakeGarbageCollected<DOMRectList>(quads);
+ }
+ 
+@@ -1671,7 +1682,14 @@
+   // TODO(crbug.com/1499981): This should be removed once synchronized scrolling
+   // impact is understood.
+   SyncScrollAttemptHeuristic::DidAccessScrollOffset();
+-  return DOMRect::FromRectF(BoundingRect());
++  auto rect = BoundingRect();
++  const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++  if (command_line->HasSwitch(switches::kFingerprint) &&
++      (!command_line->HasSwitch(switches::kDisableSpoofing) ||
++       command_line->GetSwitchValueASCII(switches::kDisableSpoofing).find("clientrects") == std::string::npos)) {
++    rect.Offset(owner_document_->GetNoiseFactorX(), owner_document_->GetNoiseFactorY());
++  }
++  return DOMRect::FromRectF(rect);
+ }
+ 
+ // TODO(editing-dev): We should make
+diff --git a/third_party/blink/renderer/core/execution_context/navigator_base.cc b/third_party/blink/renderer/core/execution_context/navigator_base.cc
+--- a/third_party/blink/renderer/core/execution_context/navigator_base.cc
++++ b/third_party/blink/renderer/core/execution_context/navigator_base.cc
+@@ -4,7 +4,9 @@
+ 
+ #include "third_party/blink/renderer/core/execution_context/navigator_base.h"
+ 
++#include "base/command_line.h"
+ #include "base/feature_list.h"
++#include "components/ungoogled/ungoogled_switches.h"
+ #include "build/build_config.h"
+ #include "third_party/blink/public/common/features.h"
+ #include "third_party/blink/renderer/core/execution_context/execution_context.h"
+@@ -24,6 +26,19 @@
+ namespace {
+ 
+ String GetReducedNavigatorPlatform() {
++const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++
++if (command_line->HasSwitch(switches::kFingerprintPlatform)) {
++  std::string custom_platform = base::ToLowerASCII(command_line->GetSwitchValueASCII(switches::kFingerprintPlatform));
++
++  if (custom_platform == "windows") {
++    return "Win32";
++  } else if (custom_platform == "linux") {
++    return "Linux x86_64";
++  } else if (custom_platform == "macos") {
++    return "MacIntel";
++  }
++}
+ #if BUILDFLAG(IS_ANDROID)
+   return "Linux armv81";
+ #elif BUILDFLAG(IS_MAC)
+diff --git a/third_party/blink/renderer/core/frame/navigator.cc b/third_party/blink/renderer/core/frame/navigator.cc
+--- a/third_party/blink/renderer/core/frame/navigator.cc
++++ b/third_party/blink/renderer/core/frame/navigator.cc
+@@ -22,6 +22,9 @@
+  */
+ 
+ #include "third_party/blink/renderer/core/frame/navigator.h"
++#include "base/command_line.h"
++#include "base/strings/string_util.h"
++#include "components/ungoogled/ungoogled_switches.h"
+ 
+ #include "third_party/blink/renderer/bindings/core/v8/script_controller.h"
+ #include "third_party/blink/renderer/core/dom/document.h"
+@@ -56,6 +59,20 @@
+ }
+ 
+ String Navigator::platform() const {
++  const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++
++  if (command_line->HasSwitch(switches::kFingerprintPlatform)) {
++    std::string custom_platform = base::ToLowerASCII(command_line->GetSwitchValueASCII(switches::kFingerprintPlatform));
++
++    if (custom_platform == "windows") {
++      return "Win32";
++    } else if (custom_platform == "linux") {
++      return "Linux x86_64";
++    } else if (custom_platform == "macos") {
++      return "MacIntel";
++    }
++  }
++
+   // TODO(955620): Consider changing devtools overrides to only allow overriding
+   // the platform with a frozen platform to distinguish between
+   // mobile and desktop when ReduceUserAgent is enabled.
+@@ -98,9 +115,6 @@
+ }
+ 
+ bool Navigator::webdriver() const {
+-  if (RuntimeEnabledFeatures::AutomationControlledEnabled())
+-    return true;
+-
+   bool automation_enabled = false;
+   probe::ApplyAutomationOverride(GetExecutionContext(), automation_enabled);
+   return automation_enabled;
+diff --git a/third_party/blink/renderer/core/frame/navigator_concurrent_hardware.cc b/third_party/blink/renderer/core/frame/navigator_concurrent_hardware.cc
+--- a/third_party/blink/renderer/core/frame/navigator_concurrent_hardware.cc
++++ b/third_party/blink/renderer/core/frame/navigator_concurrent_hardware.cc
+@@ -4,11 +4,27 @@
+ 
+ #include "third_party/blink/renderer/core/frame/navigator_concurrent_hardware.h"
+ 
++#include "base/command_line.h"
+ #include "base/system/sys_info.h"
++#include "components/ungoogled/ungoogled_switches.h"
+ 
+ namespace blink {
+ 
+ unsigned NavigatorConcurrentHardware::hardwareConcurrency() const {
++  const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++
++  if (command_line->HasSwitch(switches::kFingerprintHardwareConcurrency)) {
++    std::string value = command_line->GetSwitchValueASCII(switches::kFingerprintHardwareConcurrency);
++    unsigned long custom_concurrency = std::stoul(value);
++    return static_cast<unsigned>(custom_concurrency);
++  }
++
++  if (command_line->HasSwitch(switches::kFingerprint)) {
++    std::string fingerprint_str = command_line->GetSwitchValueASCII(switches::kFingerprint);
++    uint32_t fingerprint = static_cast<uint32_t>(std::stoull(fingerprint_str));
++    return static_cast<unsigned>(((fingerprint % 13) + 4) * 2);
++  }
++
+   return static_cast<unsigned>(base::SysInfo::NumberOfProcessors());
+ }
+ 
+diff --git a/third_party/blink/renderer/core/frame/navigator_device_memory.cc b/third_party/blink/renderer/core/frame/navigator_device_memory.cc
+--- a/third_party/blink/renderer/core/frame/navigator_device_memory.cc
++++ b/third_party/blink/renderer/core/frame/navigator_device_memory.cc
+@@ -12,7 +12,8 @@
+ namespace blink {
+ 
+ float NavigatorDeviceMemory::deviceMemory() const {
+-  return ApproximatedDeviceMemory::GetApproximatedDeviceMemory();
++  return 8;
++  // return ApproximatedDeviceMemory::GetApproximatedDeviceMemory();
+ }
+ 
+ }  // namespace blink
+diff --git a/third_party/blink/renderer/core/frame/navigator_ua.cc b/third_party/blink/renderer/core/frame/navigator_ua.cc
+--- a/third_party/blink/renderer/core/frame/navigator_ua.cc
++++ b/third_party/blink/renderer/core/frame/navigator_ua.cc
+@@ -16,6 +16,7 @@
+       MakeGarbageCollected<NavigatorUAData>(GetUAExecutionContext());
+ 
+   UserAgentMetadata metadata = GetUserAgentMetadata();
++  UpdateUserAgentMetadataFingerprint(&metadata);
+   ua_data->SetBrandVersionList(metadata.brand_version_list);
+   ua_data->SetMobile(metadata.mobile);
+   ua_data->SetPlatform(String::FromUtf8(metadata.platform),
+diff --git a/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc b/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc
+--- a/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc
++++ b/third_party/blink/renderer/core/html/canvas/html_canvas_element.cc
+@@ -26,6 +26,7 @@
+  */
+ 
+ #include "third_party/blink/renderer/core/html/canvas/html_canvas_element.h"
++#include "components/ungoogled/ungoogled_switches.h"
+ 
+ #include <math.h>
+ 
+@@ -33,6 +34,7 @@
+ #include <memory>
+ #include <utility>
+ 
++#include "base/command_line.h"
+ #include "base/feature_list.h"
+ #include "base/functional/callback_helpers.h"
+ #include "base/location.h"
+@@ -1292,6 +1294,56 @@
+ 
+   scoped_refptr<StaticBitmapImage> image_bitmap = Snapshot(source_buffer);
+   if (image_bitmap) {
++
++    // 添加指纹保护：在创建 ImageDataBuffer 之前修改像素数据副本
++    const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++    if (command_line->HasSwitch(switches::kFingerprint) &&
++        (!command_line->HasSwitch(switches::kDisableSpoofing) ||
++         command_line->GetSwitchValueASCII(switches::kDisableSpoofing).find("canvas") == std::string::npos)) {
++
++      // 获取图像的像素数据进行修改（创建完全独立的副本）
++      SkImageInfo image_info = SkImageInfo::Make(
++          image_bitmap->width(),
++          image_bitmap->height(),
++          kRGBA_8888_SkColorType,  // 使用标准的RGBA格式
++          kUnpremul_SkAlphaType);
++
++      // 创建独立的像素缓冲区副本
++      size_t row_bytes = image_info.minRowBytes();
++      size_t buffer_size = image_info.computeMinByteSize();
++
++      if (buffer_size > 0 && buffer_size <= partition_alloc::MaxDirectMapped()) {
++        std::vector<uint8_t> pixel_buffer(buffer_size);
++
++        // 从原始图像读取像素数据到我们的副本中
++        PaintImage original_paint_image = image_bitmap->PaintImageForCurrentFrame();
++        if (original_paint_image.readPixels(image_info, pixel_buffer.data(), row_bytes, 0, 0)) {
++
++          // 对副本应用指纹保护修改（不影响原始数据）
++          StaticBitmapImage::ShuffleSubchannelColorData(
++              SkPixmap(image_info, pixel_buffer.data(), row_bytes));
++
++          // 用修改后的像素数据创建完全新的图像对象
++          sk_sp<SkData> modified_data = SkData::MakeWithCopy(pixel_buffer.data(), buffer_size);
++          if (modified_data) {
++            sk_sp<SkImage> modified_sk_image = SkImages::RasterFromData(
++                image_info, modified_data, row_bytes);
++
++            if (modified_sk_image) {
++              // 创建新的 StaticBitmapImage，使用通用的创建方法
++              PaintImage modified_paint_image = PaintImageBuilder::WithDefault()
++                  .set_id(PaintImage::GetNextId())
++                  .set_image(modified_sk_image, PaintImage::GetNextContentId())
++                  .TakePaintImage();
++
++              image_bitmap = StaticBitmapImage::Create(
++                  modified_paint_image, image_bitmap->Orientation());
++            }
++          }
++        }
++      }
++    }
++
+     std::unique_ptr<ImageDataBuffer> data_buffer =
+         ImageDataBuffer::Create(image_bitmap);
+     if (!data_buffer)
+diff --git a/third_party/blink/renderer/core/html/canvas/text_metrics.cc b/third_party/blink/renderer/core/html/canvas/text_metrics.cc
+--- a/third_party/blink/renderer/core/html/canvas/text_metrics.cc
++++ b/third_party/blink/renderer/core/html/canvas/text_metrics.cc
+@@ -90,6 +90,24 @@
+                          PlainTextPainter& text_painter)
+     : TextMetrics() {
+   Update(font, direction, baseline, align, text, text_painter);
++}
++
++void TextMetrics::Shuffle(const double factor) {
++  // x-direction
++  width_ *= factor;
++  actual_bounding_box_left_ *= factor;
++  actual_bounding_box_right_ *= factor;
++
++  // y-direction
++  font_bounding_box_ascent_ *= factor;
++  font_bounding_box_descent_ *= factor;
++  actual_bounding_box_ascent_ *= factor;
++  actual_bounding_box_descent_ *= factor;
++  em_height_ascent_ *= factor;
++  em_height_descent_ *= factor;
++  baselines_->setAlphabetic(baselines_->alphabetic() * factor);
++  baselines_->setHanging(baselines_->hanging() * factor);
++  baselines_->setIdeographic(baselines_->ideographic() * factor);
+ }
+ 
+ void TextMetrics::Update(const Font* font,
+diff --git a/third_party/blink/renderer/core/html/canvas/text_metrics.h b/third_party/blink/renderer/core/html/canvas/text_metrics.h
+--- a/third_party/blink/renderer/core/html/canvas/text_metrics.h
++++ b/third_party/blink/renderer/core/html/canvas/text_metrics.h
+@@ -110,6 +110,8 @@
+     float x_position_;
+   };
+ 
++  void Shuffle(const double factor);
++
+  private:
+   void Update(const Font*,
+               const TextDirection& direction,
+diff --git a/third_party/blink/renderer/core/loader/frame_fetch_context.cc b/third_party/blink/renderer/core/loader/frame_fetch_context.cc
+--- a/third_party/blink/renderer/core/loader/frame_fetch_context.cc
++++ b/third_party/blink/renderer/core/loader/frame_fetch_context.cc
+@@ -43,6 +43,7 @@
+ #include "base/memory/scoped_refptr.h"
+ #include "base/metrics/histogram_functions.h"
+ #include "base/metrics/histogram_macros.h"
++#include "third_party/blink/public/common/user_agent/user_agent_metadata.h"
+ #include "build/build_config.h"
+ #include "mojo/public/cpp/bindings/associated_remote.h"
+ #include "net/http/structured_headers.h"
+@@ -740,6 +741,7 @@
+ 
+   // Only send User Agent hints if the info is available
+   if (ua) {
++    UpdateUserAgentMetadataFingerprint(&ua.value());
+     bool ua_changed = !last_ua_ || *last_ua_ != *ua;
+     if (ua_changed) {
+       last_ua_ = *ua;
+diff --git a/third_party/blink/renderer/core/timezone/timezone_controller.cc b/third_party/blink/renderer/core/timezone/timezone_controller.cc
+--- a/third_party/blink/renderer/core/timezone/timezone_controller.cc
++++ b/third_party/blink/renderer/core/timezone/timezone_controller.cc
+@@ -4,7 +4,9 @@
+ 
+ #include "third_party/blink/renderer/core/timezone/timezone_controller.h"
+ 
++#include "base/command_line.h"
+ #include "base/feature_list.h"
++#include "components/ungoogled/ungoogled_switches.h"
+ #include "mojo/public/cpp/bindings/pending_remote.h"
+ #include "mojo/public/cpp/bindings/remote.h"
+ #include "third_party/blink/public/common/thread_safe_browser_interface_broker_proxy.h"
+@@ -60,6 +62,14 @@
+ }
+ 
+ String GetCurrentTimezoneId() {
++  const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++  if (command_line->HasSwitch(switches::kFingerprintTimezone)) {
++    std::string timezone_str = command_line->GetSwitchValueASCII(switches::kFingerprintTimezone);
++    if (!timezone_str.empty()) {
++      return String::FromUtf8(timezone_str);
++    }
++  }
++
+   std::unique_ptr<icu::TimeZone> timezone(icu::TimeZone::createDefault());
+   CHECK(timezone);
+   return GetTimezoneId(*timezone.get());
+@@ -95,6 +105,15 @@
+   DCHECK(IsMainThread());
+   if (!base::FeatureList::IsEnabled(kLazyBlinkTimezoneInit)) {
+     host_timezone_id_ = GetCurrentTimezoneId();
++  }
++
++  // Apply --timezone parameter at startup
++  const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++  if (command_line->HasSwitch(switches::kFingerprintTimezone)) {
++    std::string timezone_str = command_line->GetSwitchValueASCII(switches::kFingerprintTimezone);
++    if (!timezone_str.empty()) {
++      SetIcuTimeZoneAndNotifyV8(String::FromUtf8(timezone_str));
++    }
+   }
+ }
+ 
+@@ -216,9 +235,23 @@
+ }
+ 
+ bool TimeZoneController::SetIcuTimeZoneAndNotifyV8(const String& timezone_id) {
+-  DCHECK(!timezone_id.empty());
++  const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++  String actual_timezone_id;
++
++  if (command_line->HasSwitch(switches::kFingerprintTimezone)) {
++    std::string timezone_str = command_line->GetSwitchValueASCII(switches::kFingerprintTimezone);
++    if (!timezone_str.empty()) {
++      actual_timezone_id = String::FromUtf8(timezone_str);
++    } else {
++      actual_timezone_id = timezone_id;
++    }
++  } else {
++    DCHECK(!timezone_id.empty());
++    actual_timezone_id = timezone_id;
++  }
++
+   std::unique_ptr<icu::TimeZone> timezone(icu::TimeZone::createTimeZone(
+-      icu::UnicodeString(timezone_id.Ascii().data(), -1, US_INV)));
++      icu::UnicodeString(actual_timezone_id.Ascii().data(), -1, US_INV)));
+   CHECK(timezone);
+ 
+   if (*timezone == icu::TimeZone::getUnknown()) {
+diff --git a/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc b/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc
+--- a/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc
++++ b/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.h"
++#include <functional>
++#include "components/ungoogled/ungoogled_switches.h"
+ 
+ #include <cmath>
+ #include <cstdint>
+@@ -14,6 +16,7 @@
+ 
+ #include "base/check.h"
+ #include "base/check_op.h"
++#include "base/command_line.h"
+ #include "base/location.h"
+ #include "base/memory/scoped_refptr.h"
+ #include "base/memory/weak_ptr.h"
+@@ -107,6 +110,9 @@
+ // https://github.com/include-what-you-use/include-what-you-use/issues/1122
+ // IWYU pragma: no_include "base/numerics/clamped_math.h"
+ 
++#include "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.h"
++#include "third_party/blink/renderer/core/frame/local_dom_window.h"
++
+ namespace blink {
+ 
+ class MemoryManagedPaintCanvas;
+@@ -510,6 +516,13 @@
+       SkIRect bounds =
+           snapshot->PaintImageForCurrentFrame().GetSkImageInfo().bounds();
+       DCHECK(!bounds.intersect(SkIRect::MakeXYWH(sx, sy, sw, sh)));
++    }
++
++    const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++    if (read_pixels_successful && command_line->HasSwitch(switches::kFingerprint) &&
++        (!command_line->HasSwitch(switches::kDisableSpoofing) ||
++         command_line->GetSwitchValueASCII(switches::kDisableSpoofing).find("canvas") == std::string::npos)) {
++      StaticBitmapImage::ShuffleSubchannelColorData(image_data_pixmap);
+     }
+   }
+ 
+@@ -1149,9 +1162,33 @@
+   TextDirection direction =
+       ToTextDirection(state.GetDirection(), host, computed_style);
+ 
+-  return MakeGarbageCollected<TextMetrics>(
++  TextMetrics* text_metrics = MakeGarbageCollected<TextMetrics>(
+       font, direction, state.GetTextBaseline(), state.GetTextAlign(), text,
+       host->GetPlainTextPainter());
++
++  // Scale text metrics if enabled
++  const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++  if (command_line->HasSwitch(switches::kFingerprint) &&
++      (!command_line->HasSwitch(switches::kDisableSpoofing) ||
++       command_line->GetSwitchValueASCII(switches::kDisableSpoofing).find("canvas") == std::string::npos)) {
++    std::string seed_str = command_line->GetSwitchValueASCII(switches::kFingerprint);
++    std::string combined_rects_x = seed_str + "clientrects_noise_x";
++    uint32_t hash_val_x = static_cast<uint32_t>(std::hash<std::string>{}(combined_rects_x));
++     // 映射到[-0.5, 0.5]范围
++    double norm_x = (hash_val_x & 0xFFFFFFFF) / 4294967295.0 - 0.5;
++    // 使用 0.00001 作为因子 (相当于原来的 1/100000.0)
++    double noise_x = norm_x * 0.00001;
++    if (HostAsOffscreenCanvas()) {
++      if (auto* window = DynamicTo<LocalDOMWindow>(GetTopExecutionContext())) {
++        if (window->GetFrame() && window->GetFrame()->GetDocument() && text.length() > 0) {
++          text_metrics->Shuffle(1.0 + noise_x);
++        }
++      }
++    } else if (canvas && text.length() > 0) {
++      text_metrics->Shuffle(1.0 + noise_x);
++    }
++  }
++  return text_metrics;
+ }
+ 
+ String BaseRenderingContext2D::lang() const {
+diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc b/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc
+--- a/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc
++++ b/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc
+@@ -24,10 +24,13 @@
+  */
+ 
+ #include "third_party/blink/renderer/modules/webaudio/offline_audio_context.h"
+-
++#include <functional>
++
++#include "base/command_line.h"
+ #include "base/metrics/histogram_functions.h"
+ #include "base/metrics/histogram_macros.h"
+ #include "media/base/audio_glitch_info.h"
++#include "components/ungoogled/ungoogled_switches.h"
+ #include "third_party/blink/public/platform/platform.h"
+ #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
+ #include "third_party/blink/renderer/bindings/modules/v8/v8_offline_audio_context_options.h"
+@@ -173,6 +176,45 @@
+                                    render_quantum_frames, exception_state);
+ }
+ 
++// 生成基于指纹的帧数调整值（1到noise_limit之间）
++uint32_t getNoiseData(uint32_t number_of_frames) {
++    // 获取命令行参数
++    const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++    if (command_line->HasSwitch(switches::kFingerprint)) {
++        std::string fingerprint_str = command_line->GetSwitchValueASCII(switches::kFingerprint);
++        if (!fingerprint_str.empty()) {
++            // 组合指纹字符串、帧数和常量"audio"
++            std::string combined = fingerprint_str + std::to_string(number_of_frames) + "audio";
++            uint32_t hash = static_cast<uint32_t>(std::hash<std::string>{}(combined));
++
++            // 计算1%的number_of_frames
++            uint32_t one_percent = number_of_frames / 100;
++            if (one_percent < 1) one_percent = 1;  // 确保至少为1
++
++            constexpr uint32_t MAX_NOISE = 1000;
++            uint32_t noise_limit = std::min(one_percent, MAX_NOISE);
++            return (hash % noise_limit) + 1;
++        }
++    }
++    return 0;
++}
++
++// 生成基于指纹的采样率噪声（范围 ±0.01）
++float getSampleRateNoise(float sample_rate) {
++    const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++    if (command_line->HasSwitch(switches::kFingerprint)) {
++        std::string fingerprint_str = command_line->GetSwitchValueASCII(switches::kFingerprint);
++        if (!fingerprint_str.empty()) {
++            std::string combined = fingerprint_str + std::to_string(static_cast<int>(sample_rate)) + "samplerate";
++            uint32_t hash = static_cast<uint32_t>(std::hash<std::string>{}(combined));
++            // 生成 ±0.01 范围的噪声
++            float noise = ((static_cast<float>(hash % 10000) / 10000.0f) - 0.5f) * 0.02f;
++            return noise;
++        }
++    }
++    return 0.0f;
++}
++
+ OfflineAudioContext::OfflineAudioContext(LocalDOMWindow* window,
+                                          unsigned number_of_channels,
+                                          uint32_t number_of_frames,
+@@ -183,8 +225,15 @@
+                        ContextType::kOfflineContext,
+                        render_quantum_frames),
+       total_render_frames_(number_of_frames) {
++  float adjusted_sample_rate = sample_rate;
++  const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++  if (!command_line->HasSwitch(switches::kDisableSpoofing) ||
++      command_line->GetSwitchValueASCII(switches::kDisableSpoofing).find("audio") == std::string::npos) {
++    adjusted_sample_rate += getSampleRateNoise(sample_rate);
++  }
++
+   destination_node_ = OfflineAudioDestinationNode::Create(
+-      this, number_of_channels, number_of_frames, sample_rate);
++      this, number_of_channels, total_render_frames_, adjusted_sample_rate);
+   Initialize();
+ }
+ 
+diff --git a/third_party/blink/renderer/modules/webgl/BUILD.gn b/third_party/blink/renderer/modules/webgl/BUILD.gn
+--- a/third_party/blink/renderer/modules/webgl/BUILD.gn
++++ b/third_party/blink/renderer/modules/webgl/BUILD.gn
+@@ -48,6 +48,10 @@
+     "ext_texture_norm_16.cc",
+     "ext_texture_norm_16.h",
+     "gl_string_query.h",
++    "gpu_info.cc",
++    "gpu_info.h",
++    "gpu_fingerprint.cc",
++    "gpu_fingerprint.h",
+     "khr_parallel_shader_compile.cc",
+     "khr_parallel_shader_compile.h",
+     "nv_shader_noperspective_interpolation.cc",
+diff --git a/third_party/blink/renderer/modules/webgl/gpu_fingerprint.cc b/third_party/blink/renderer/modules/webgl/gpu_fingerprint.cc
+new file mode 100644
+--- /dev/null
++++ b/third_party/blink/renderer/modules/webgl/gpu_fingerprint.cc
+@@ -0,0 +1,106 @@
++#include "third_party/blink/renderer/modules/webgl/gpu_fingerprint.h"
++
++#include "base/command_line.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/string_util.h"
++#include "components/ungoogled/fingerprint_data.h"
++#include "components/ungoogled/ungoogled_switches.h"
++#include "third_party/blink/renderer/modules/webgl/gpu_info.h"
++
++// GPU deviceID信息可以在这里查询
++// 570.144是驱动号，替换成最新的驱动号
++// https://download.nvidia.com/XFree86/Linux-x86_64/570.144/README/supportedchips.html
++// https://deviceandbrowserinfo.com/data/fingerprints/attribute/webGLRenderer
++// https://devicehunt.com/view/type/pci/vendor/10DE
++
++namespace blink {
++
++using ungoogled::fingerprint::kMacosGpuModelCount;
++
++namespace {
++
++// Returns the appropriate GL_VENDOR string based on platform
++std::string GetGLVendorString(const std::string& platform) {
++  if (platform == "macos") {
++    return "Google Inc. (Apple)";
++  } else if (platform == "linux") {
++    return "Google Inc. (NVIDIA Corporation)";
++  } else {
++    // Windows
++    return "Google Inc. (NVIDIA)";
++  }
++}
++
++// Returns a GL_RENDERER string based on platform and fingerprint
++std::string GetGLRendererString(const std::string& platform, uint32_t fingerprint) {
++  if (platform == "macos") {
++    // Use helper function to get macOS GPU string
++    return GetMacosGpuString(fingerprint % kMacosGpuModelCount);
++  } else if (platform == "linux") {
++    // For Linux, get the basic GPU model but format for Linux
++    size_t model_index = fingerprint % GetGpuCount();
++    // Get the Windows GPU info to extract the model name
++    const GpuInfo& gpu_info = GetGpuInfo(model_index);
++    // Format for Linux (no device ID, different suffix)
++    return GetLinuxGpuString(gpu_info.model_name);
++  } else {
++    // Default to Windows format
++    return GetGpuInfo(fingerprint % GetGpuCount()).renderer_string;
++  }
++}
++
++}  // namespace
++
++// Public functions that will be used in WebGL code
++std::string GetGLVendorStringForFingerprint() {
++  const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++
++  // 如果 disable-spoofing 包含 gpu，不应用指纹
++  if (command_line->HasSwitch(switches::kDisableSpoofing) &&
++      command_line->GetSwitchValueASCII(switches::kDisableSpoofing).find("gpu") != std::string::npos) {
++    return "";
++  }
++
++  // 如果指定了 fingerprint，根据平台生成
++  if (command_line->HasSwitch(switches::kFingerprint)) {
++    std::string platform = "windows";
++    if (command_line->HasSwitch(switches::kFingerprintPlatform)) {
++      platform = base::ToLowerASCII(
++          command_line->GetSwitchValueASCII(switches::kFingerprintPlatform));
++    }
++    return GetGLVendorString(platform);
++  }
++
++  return "";
++}
++
++std::string GetGLRendererStringForFingerprint() {
++  const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++
++  // 如果 disable-spoofing 包含 gpu，不应用指纹
++  if (command_line->HasSwitch(switches::kDisableSpoofing) &&
++      command_line->GetSwitchValueASCII(switches::kDisableSpoofing).find("gpu") != std::string::npos) {
++    return "";
++  }
++
++  // 如果指定了 fingerprint，根据平台和fingerprint值生成
++  if (command_line->HasSwitch(switches::kFingerprint)) {
++    std::string platform = "windows";
++    uint32_t fingerprint = 0;
++
++    if (command_line->HasSwitch(switches::kFingerprintPlatform)) {
++      platform = base::ToLowerASCII(
++          command_line->GetSwitchValueASCII(switches::kFingerprintPlatform));
++    }
++
++    std::string fingerprint_str =
++        command_line->GetSwitchValueASCII(switches::kFingerprint);
++    base::StringToUint(fingerprint_str, &fingerprint);
++
++    return GetGLRendererString(platform, fingerprint);
++  }
++
++  return "";
++}
++
++}  // namespace blink
+diff --git a/third_party/blink/renderer/modules/webgl/gpu_fingerprint.h b/third_party/blink/renderer/modules/webgl/gpu_fingerprint.h
+new file mode 100644
+--- /dev/null
++++ b/third_party/blink/renderer/modules/webgl/gpu_fingerprint.h
+@@ -0,0 +1,16 @@
++#ifndef THIRD_PARTY_BLINK_RENDERER_MODULES_WEBGL_GPU_FINGERPRINT_H_
++#define THIRD_PARTY_BLINK_RENDERER_MODULES_WEBGL_GPU_FINGERPRINT_H_
++
++#include <string>
++
++namespace blink {
++
++// Returns the GL_VENDOR string based on platform and fingerprint
++std::string GetGLVendorStringForFingerprint();
++
++// Returns the GL_RENDERER string based on platform and fingerprint
++std::string GetGLRendererStringForFingerprint();
++
++}  // namespace blink
++
++#endif  // THIRD_PARTY_BLINK_RENDERER_MODULES_WEBGL_GPU_FINGERPRINT_H_
+diff --git a/third_party/blink/renderer/modules/webgl/gpu_info.cc b/third_party/blink/renderer/modules/webgl/gpu_info.cc
+new file mode 100644
+--- /dev/null
++++ b/third_party/blink/renderer/modules/webgl/gpu_info.cc
+@@ -0,0 +1,100 @@
++#include "third_party/blink/renderer/modules/webgl/gpu_info.h"
++
++#include "base/containers/span.h"
++#include "base/no_destructor.h"
++#include "base/strings/stringprintf.h"
++#include "components/ungoogled/fingerprint_data.h"
++
++namespace blink {
++
++using ungoogled::fingerprint::GpuModelInfo;
++using ungoogled::fingerprint::kGpuModelCount;
++using ungoogled::fingerprint::kGpuModels;
++using ungoogled::fingerprint::kLinuxGpuSuffix;
++using ungoogled::fingerprint::kLinuxVendorString;
++using ungoogled::fingerprint::kMacosGpuModelCount;
++using ungoogled::fingerprint::kMacosGpuModels;
++using ungoogled::fingerprint::kWindowsGpuSuffix;
++using ungoogled::fingerprint::kWindowsVendorString;
++
++// Generate full Windows GPU info on demand
++GpuInfo GetWindowsGpuInfo(size_t index) {
++  if (index >= kGpuModelCount) {
++    // Default to last one (RTX 4090) if out of bounds
++    index = kGpuModelCount - 1;
++  }
++
++  const GpuModelInfo& model = base::span(kGpuModels)[index];
++  GpuInfo info;
++  info.model_name = model.model_name;
++  info.device_id = model.device_id;
++
++  // Build the Windows renderer string
++  std::string device_id_part = (model.device_id && model.device_id[0]) ?
++    " (" + std::string(model.device_id) + ")" : "";
++
++  info.renderer_string = "ANGLE (" + std::string(kWindowsVendorString) +
++                         ", NVIDIA " + info.model_name +
++                         device_id_part + " " + kWindowsGpuSuffix + ")";
++
++  return info;
++}
++
++// All Windows GPU info list - generated from kGpuModels
++std::vector<GpuInfo> GetAllWindowsGpuInfo() {
++  std::vector<GpuInfo> result;
++  result.reserve(kGpuModelCount);
++
++  for (size_t i = 0; i < kGpuModelCount; ++i) {
++    result.push_back(GetWindowsGpuInfo(i));
++  }
++
++  return result;
++}
++
++// Lazy-initialized list of Windows GPU info
++const std::vector<GpuInfo>& GetWindowsGpuInfoList() {
++  static const base::NoDestructor<std::vector<GpuInfo>> windows_gpu_info(
++      GetAllWindowsGpuInfo());
++  return *windows_gpu_info;
++}
++
++// Implementation of the functions declared in the header
++size_t GetGpuCount() {
++  return kGpuModelCount;
++}
++
++const GpuInfo& GetGpuInfo(size_t index) {
++  // Use the Windows GPU info list
++  const std::vector<GpuInfo>& windows_list = GetWindowsGpuInfoList();
++
++  // Ensure index is in bounds
++  if (index >= windows_list.size()) {
++    return windows_list.back();
++  }
++
++  return windows_list[index];
++}
++
++// Helper function to get a macOS GPU model string
++std::string GetMacosGpuString(size_t index) {
++  if (index >= kMacosGpuModelCount) {
++    // Default to M3 if out of bounds
++    index = kMacosGpuModelCount - 1;  // Index of M3 in the array
++  }
++
++  return base::StringPrintf("ANGLE (Apple, ANGLE Metal Renderer: Apple %s, Unspecified Version)",
++                         base::span(kMacosGpuModels)[index]);
++}
++
++// Helper function to get a Linux GPU renderer string
++std::string GetLinuxGpuString(const std::string& model_name) {
++  // Note the difference: no device ID and no space before /PCIe
++  // Also using the Linux-specific vendor string
++  return base::StringPrintf("ANGLE (%s, NVIDIA %s%s)",
++                         kLinuxVendorString,
++                         model_name.c_str(),
++                         kLinuxGpuSuffix);
++}
++
++}  // namespace blink
+diff --git a/third_party/blink/renderer/modules/webgl/gpu_info.h b/third_party/blink/renderer/modules/webgl/gpu_info.h
+new file mode 100644
+--- /dev/null
++++ b/third_party/blink/renderer/modules/webgl/gpu_info.h
+@@ -0,0 +1,36 @@
++#ifndef THIRD_PARTY_BLINK_RENDERER_MODULES_WEBGL_GPU_INFO_H_
++#define THIRD_PARTY_BLINK_RENDERER_MODULES_WEBGL_GPU_INFO_H_
++
++#include <string>
++#include <vector>
++
++namespace blink {
++
++// Structure to hold GPU information
++struct GpuInfo {
++  std::string model_name;
++  std::string device_id;
++  std::string renderer_string;
++};
++
++// Returns the number of available GPUs in our database
++size_t GetGpuCount();
++
++// Returns GPU info for a given index
++const GpuInfo& GetGpuInfo(size_t index);
++
++// Helper function to get a macOS GPU model string
++std::string GetMacosGpuString(size_t index);
++
++// Helper function to get a Linux GPU renderer string
++std::string GetLinuxGpuString(const std::string& model_name);
++
++// Generate Windows GPU info for a specific index
++GpuInfo GetWindowsGpuInfo(size_t index);
++
++// Access to all Windows GPU info
++const std::vector<GpuInfo>& GetWindowsGpuInfoList();
++
++}  // namespace blink
++
++#endif  // THIRD_PARTY_BLINK_RENDERER_MODULES_WEBGL_GPU_INFO_H_
+diff --git a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
+--- a/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
++++ b/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc
+@@ -24,6 +24,8 @@
+  */
+ 
+ #include "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h"
++#include "base/command_line.h"
++#include "components/ungoogled/ungoogled_switches.h"
+ 
+ #include <inttypes.h>
+ 
+@@ -105,6 +107,7 @@
+ #include "third_party/blink/renderer/modules/webgl/ext_shader_texture_lod.h"
+ #include "third_party/blink/renderer/modules/webgl/ext_texture_filter_anisotropic.h"
+ #include "third_party/blink/renderer/modules/webgl/gl_string_query.h"
++#include "third_party/blink/renderer/modules/webgl/gpu_fingerprint.h"
+ #include "third_party/blink/renderer/modules/webgl/oes_element_index_uint.h"
+ #include "third_party/blink/renderer/modules/webgl/oes_standard_derivatives.h"
+ #include "third_party/blink/renderer/modules/webgl/oes_texture_float.h"
+@@ -149,6 +152,7 @@
+ #include "third_party/blink/renderer/platform/graphics/paint/paint_record_builder.h"
+ #include "third_party/blink/renderer/platform/graphics/skia/sk_image_info_hash.h"
+ #include "third_party/blink/renderer/platform/graphics/skia/skia_utils.h"
++#include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
+ #include "third_party/blink/renderer/platform/graphics/static_bitmap_image_transform.h"
+ #include "third_party/blink/renderer/platform/graphics/unaccelerated_static_bitmap_image.h"
+ #include "third_party/blink/renderer/platform/graphics/video_frame_image_util.h"
+@@ -4191,6 +4195,10 @@
+       return ScriptValue::CreateNull(script_state->GetIsolate());
+     case WebGLDebugRendererInfo::kUnmaskedRendererWebgl:
+       if (ExtensionEnabled(kWebGLDebugRendererInfoName)) {
++        const auto fingerprint_value = GetGLRendererStringForFingerprint();
++        if (!fingerprint_value.empty()) {
++          return WebGLAny(script_state, String::FromUtf8(fingerprint_value));
++        }
+         return WebGLAny(script_state,
+                         String(ContextGL()->GetString(GL_RENDERER)));
+       }
+@@ -4200,6 +4208,10 @@
+       return ScriptValue::CreateNull(script_state->GetIsolate());
+     case WebGLDebugRendererInfo::kUnmaskedVendorWebgl:
+       if (ExtensionEnabled(kWebGLDebugRendererInfoName)) {
++        const auto fingerprint_value = GetGLVendorStringForFingerprint();
++        if (!fingerprint_value.empty()) {
++          return WebGLAny(script_state, String::FromUtf8(fingerprint_value));
++        }
+         return WebGLAny(script_state,
+                         String(ContextGL()->GetString(GL_VENDOR)));
+       }
+@@ -5346,6 +5358,29 @@
+       return;
+     }
+     ContextGL()->ReadPixels(x, y, width, height, format, type, data);
++
++    // 添加指纹保护：修改已读取的像素数据
++    const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++    if (command_line->HasSwitch(switches::kFingerprint) &&
++        (!command_line->HasSwitch(switches::kDisableSpoofing) ||
++         command_line->GetSwitchValueASCII(switches::kDisableSpoofing).find("canvas") == std::string::npos)) {
++      // 构建 SkImageInfo 来描述像素格式
++      if (format != GL_RGBA || type != GL_UNSIGNED_BYTE ||
++          width <= 0 || height <= 0) {
++        return;
++      }
++      const auto pack = GetPackPixelStoreParams();
++      const SkImageInfo image_info = SkImageInfo::Make(
++          width, height, kRGBA_8888_SkColorType, kUnpremul_SkAlphaType);
++      const size_t row_bytes = image_info.minRowBytes();
++      if (pack.row_length != 0 || pack.skip_pixels != 0 || pack.skip_rows != 0 ||
++          pack.alignment <= 0 || row_bytes % pack.alignment != 0 ||
++          image_info.computeMinByteSize() > buffer_size.ValueOrDie()) {
++        return;
++      }
++      StaticBitmapImage::ShuffleSubchannelColorData(
++          SkPixmap(image_info, data, row_bytes));
++    }
+   }
+ }
+ 
+diff --git a/third_party/blink/renderer/platform/BUILD.gn b/third_party/blink/renderer/platform/BUILD.gn
+--- a/third_party/blink/renderer/platform/BUILD.gn
++++ b/third_party/blink/renderer/platform/BUILD.gn
+@@ -1767,7 +1767,9 @@
+     "//third_party/blink/renderer:non_test_config",
+   ]
+ 
+-  include_dirs = []
++  include_dirs = [
++    "//third_party/skia/include/private", # For shuffler in graphics/static_bitmap_image.cc
++  ]
+ 
+   allow_circular_includes_from = [
+     "//third_party/blink/renderer/platform/blob",
+@@ -1781,6 +1783,7 @@
+   assert(use_libgav1_parser)
+ 
+   public_deps = [
++    "//components/ungoogled:ungoogled_switches",
+     ":allow_discouraged_type",
+     ":blink_platform_public_deps",
+     ":platform_export",
+diff --git a/third_party/blink/renderer/platform/exported/web_runtime_features.cc b/third_party/blink/renderer/platform/exported/web_runtime_features.cc
+--- a/third_party/blink/renderer/platform/exported/web_runtime_features.cc
++++ b/third_party/blink/renderer/platform/exported/web_runtime_features.cc
+@@ -72,4 +72,16 @@
+   RuntimeEnabledFeatures::SetLocalNetworkAccessWebRTCEnabled(enable);
+ }
+ 
++void WebRuntimeFeatures::EnableFingerprintingClientRectsNoise(bool enable) {
++  RuntimeEnabledFeatures::SetFingerprintingClientRectsNoiseEnabled(enable);
++}
++
++void WebRuntimeFeatures::EnableFingerprintingCanvasMeasureTextNoise(bool enable) {
++  RuntimeEnabledFeatures::SetFingerprintingCanvasMeasureTextNoiseEnabled(enable);
++}
++
++void WebRuntimeFeatures::EnableFingerprintingCanvasImageDataNoise(bool enable) {
++  RuntimeEnabledFeatures::SetFingerprintingCanvasImageDataNoiseEnabled(enable);
++}
++
+ }  // namespace blink
+diff --git a/third_party/blink/renderer/platform/fonts/font_cache.cc b/third_party/blink/renderer/platform/fonts/font_cache.cc
+--- a/third_party/blink/renderer/platform/fonts/font_cache.cc
++++ b/third_party/blink/renderer/platform/fonts/font_cache.cc
+@@ -28,6 +28,11 @@
+  */
+ 
+ #include "third_party/blink/renderer/platform/fonts/font_cache.h"
++#include <functional>
++#include "base/command_line.h"
++#include "base/no_destructor.h"
++#include "base/strings/string_number_conversions.h"
++#include "components/ungoogled/ungoogled_switches.h"
+ 
+ #include <unicode/uscript.h>
+ 
+@@ -152,6 +157,120 @@
+ }
+ #endif
+ 
++// 获取平台特定的字体列表
++static std::vector<std::string> GetPlatformFonts(const std::string& platform) {
++  if (platform == "windows") {
++    return {
++      "Arial", "Arial Black",
++      "Bahnschrift",
++      "Calibri", "Cambria", "Cambria Math", "Candara", "Cascadia Code", "Cascadia Mono", "Comic Sans MS", "Consolas", "Constantia", "Corbel", "Courier New",
++      "Ebrima",
++      "Franklin Gothic Medium",
++      "Gabriola", "Gadugi", "Georgia",
++      "HoloLens MDL2 Assets",
++      "Impact", "Ink Free",
++      "Javanese Text",
++      "Leelawadee UI", "Lucida Console", "Lucida Sans Unicode",
++      "Malgun Gothic", "Marlett", "Microsoft Himalaya", "Microsoft JhengHei", "Microsoft New Tai Lue", "Microsoft PhagsPa", "Microsoft Sans Serif", "Microsoft Tai Le", "Microsoft YaHei", "Microsoft Yi Baiti", "MingLiU-ExtB", "Mongolian Baiti", "MS Gothic", "MV Boli", "Myanmar Text",
++      "Nirmala UI",
++      "Palatino Linotype",
++      "Segoe Fluent Icons", "Segoe MDL2 Assets", "Segoe Print", "Segoe Script", "Segoe UI", "Segoe UI Emoji", "Segoe UI Historic", "Segoe UI Symbol", "Segoe UI Variable", "SimSun", "Sitka", "Sylfaen", "Symbol",
++      "Tahoma", "Times New Roman", "Trebuchet MS",
++      "Verdana",
++      "Webdings", "Wingdings",
++      "Yu Gothic"
++    };
++  } else if (platform == "macos") {
++    return {
++      "Academy Engraved LET", "Adelle Sans Devanagari", "AkayaKanadaka", "AkayaTelivigala", "Al Bayan", "Al Firat", "Al Khalil", "Al Nile", "Al Rafidain", "Al Rafidain Al Fanni", "Al Tarikh", "Algiers", "American Typewriter", "Andale Mono", "Annai MN", "Apple Braille", "Apple Chancery", "Apple Color Emoji", "Apple LiGothic", "Apple LiSung", "Apple SD Gothic Neo", "Apple Symbols", "AppleGothic", "AppleMyungjo", "Arial", "Arial Hebrew", "Arial Narrow", "Arial Rounded MT", "Arial Unicode MS", "Arima Koshi", "Arima Madurai", "Asphalt", "Athelas", "Avenir", "Avenir Next", "Ayuthaya",
++      "Baghdad", "Bai Jamjuree", "Balega", "Baloo 2", "Baloo Bhai 2", "Baloo Bhaijaan", "Baloo Bhaina 2", "Baloo Chettan 2", "Baloo Da 2", "Baloo Paaji 2", "Baloo Tamma 2", "Baloo Tammudu 2", "Baloo Thambi 2", "Bangla MN", "Bangla Sangam MN", "Bank Gothic", "Baoli SC", "Baoli TC", "Baskerville", "Basra", "Bebas Neue", "Beirut", "BiauKaiHK", "BiauKaiTC", "Big Caslon", "BIZ UDGothic", "BIZ UDMincho", "Blackmoor LET", "BlairMdITC TT", "BM DoHyeon OTF", "BM HANNA 11yrs old OTF", "BM HANNA Air OTF", "BM HANNA Pro OTF", "BM JUA OTF", "BM KIRANGHAERANG OTF", "BM YEONSUNG OTF", "Bodoni 72", "Bodoni 72 Oldstyle", "Bodoni 72 Smallcaps", "Bodoni Ornaments", "Book Antiqua", "Bookman Old Style", "Bordeaux Roman Bold LET", "Bradley Hand", "Braganza", "Brill Italic", "Brill Roman", "Brush Script MT",
++      "Cambay Devanagari", "Canela", "Canela Deck", "Canela Text", "Capitals", "Carlito", "Catamaran", "Century Gothic", "Century Schoolbook", "Chakra Petch", "Chalkboard", "Chalkboard SE", "Chalkduster", "Charcoal CY", "Charm", "Charmonman", "Charter", "Cochin", "Comic Sans MS", "Copperplate", "Corsiva Hebrew", "Courier", "Courier New",
++      "Damascus", "Dash", "Dear Joe Four", "DecoType Naskh", "Devanagari MT", "Devanagari Sangam MN", "DFKaiShu-SB-Estd-BF", "Didot", "Dijla", "DIN Alternate", "DIN Condensed", "Diwan Kufi", "Diwan Thuluth", "Domaine Display", "Druk", "Druk Text", "Druk Wide",
++      "Euphemia UCAS",
++      "Fahkwang", "Fakt Slab Stencil Pro", "Farah", "Farisi", "Forgotten Futurist", "Founders Grotesk", "Founders Grotesk Text", "Futura",
++      "Galvji", "Garamond", "GB18030 Bitmap", "Geeza Pro", "Geneva", "Geneva CY", "Georgia", "Gill Sans", "Gotu", "Grantha Sangam MN", "Graphik", "Graphik Compact", "Gujarati MT", "Gujarati Sangam MN", "GungSeo", "Gurmukhi MN", "Gurmukhi MT", "Gurmukhi Sangam MN",
++      "Hannotate SC", "Hannotate TC", "HanziPen SC", "HanziPen TC", "HeadLineA", "Hei", "Heiti SC", "Heiti TC", "Helvetica", "Helvetica CY", "Helvetica Neue", "Herculanum", "Hiragino Kaku Gothic Pro", "Hiragino Kaku Gothic ProN", "Hiragino Kaku Gothic Std", "Hiragino Kaku Gothic StdN", "Hiragino Maru Gothic Pro", "Hiragino Maru Gothic ProN", "Hiragino Mincho Pro", "Hiragino Mincho ProN", "Hiragino Sans", "Hiragino Sans CNS", "Hiragino Sans GB", "Hiragino Sans TC", "Hoefler Text", "Hopper Script", "Hubballi",
++      "Impact", "InaiMathi", "Iowan Old Style", "ITF Devanagari", "ITF Devanagari Marathi",
++      "Jaini", "Jaini Purva", "Jazz LET", "Journal Sans New",
++      "K2D", "Kai", "Kailasa", "Kaiti SC", "Kaiti TC", "Kannada MN", "Kannada Sangam MN", "Katari", "Kavivanar", "Kefa", "Khmer MN", "Khmer Sangam MN", "Kigelia", "Kigelia Arabic", "Klee", "Kodchasan", "Kohinoor Bangla", "Kohinoor Devanagari", "Kohinoor Gujarati", "Kohinoor Telugu", "KoHo", "Kokonor", "Koufi Abjadi", "Krub", "Krungthep", "KufiStandardGK",
++      "Lahore Gurmukhi", "Laimoon", "Lantinghei SC", "Lantinghei TC", "Lao MN", "Lao Sangam MN", "Lava Devanagari", "Lava Kannada", "Lava Telugu", "Libian SC", "Libian TC", "LiHei Pro", "LingWai SC", "LingWai TC", "LiSong Pro", "Lucida Grande", "Luminari",
++      "Maku", "Malayalam MN", "Malayalam Sangam MN", "Mali", "Marion", "Marker Felt", "Menlo", "Microsoft Sans Serif", "Mishafi", "Mishafi Gold", "Modak", "Mona Lisa Solid ITC TT", "Monaco", "Mshtakan", "Mukta", "Mukta Malar", "Mukta Vaani", "MuktaMahee", "Muna", "Myanmar MN", "Myanmar Sangam MN", "Myriad Arabic",
++      "Nadeem", "Nanum Brush Script", "Nanum Pen Script", "NanumGothic", "NanumMyeongjo", "New Peninim MT", "Niramit", "Nisan", "Nom Na Tong", "Noteworthy", "Noto Nastaliq Urdu", "Noto Sans Adlam", "Noto Sans Armenian", "Noto Sans Avestan", "Noto Sans Bamum", "Noto Sans Bassa Vah", "Noto Sans Batak", "Noto Sans Bhaiksuki", "Noto Sans Brahmi", "Noto Sans Buginese", "Noto Sans Buhid", "Noto Sans Canadian Aboriginal", "Noto Sans Carian", "Noto Sans Caucasian Albanian", "Noto Sans Chakma", "Noto Sans Cham", "Noto Sans Coptic", "Noto Sans Cuneiform", "Noto Sans Cypriot", "Noto Sans Duployan", "Noto Sans Egyptian Hieroglyphs", "Noto Sans Elbasan", "Noto Sans Glagolitic", "Noto Sans Gothic", "Noto Sans Gunjala Gondi", "Noto Sans Hanifi Rohingya", "Noto Sans Hanunoo", "Noto Sans Hatran", "Noto Sans Imperial Aramaic", "Noto Sans Inscriptional Pahlavi", "Noto Sans Inscriptional Parthian", "Noto Sans Javanese", "Noto Sans Kaithi", "Noto Sans Kannada", "Noto Sans Kayah Li", "Noto Sans Kharoshthi", "Noto Sans Khojki", "Noto Sans Khudawadi", "Noto Sans Lepcha", "Noto Sans Limbu", "Noto Sans Linear A", "Noto Sans Linear B", "Noto Sans Lisu", "Noto Sans Lycian", "Noto Sans Lydian", "Noto Sans Mahajani", "Noto Sans Mandaic", "Noto Sans Manichaean", "Noto Sans Marchen", "Noto Sans Masaram Gondi", "Noto Sans Meetei Mayek", "Noto Sans Mende Kikakui", "Noto Sans Meroitic", "Noto Sans Miao", "Noto Sans Modi", "Noto Sans Mongolian", "Noto Sans Mro", "Noto Sans Multani", "Noto Sans Myanmar", "Noto Sans Nabataean", "Noto Sans New Tai Lue", "Noto Sans Newa", "Noto Sans NKo", "Noto Sans Ol Chiki", "Noto Sans Old Hungarian", "Noto Sans Old Italic", "Noto Sans Old North Arabian", "Noto Sans Old Permic", "Noto Sans Old Persian", "Noto Sans Old South Arabian", "Noto Sans Old Turkic", "Noto Sans Oriya", "Noto Sans Osage", "Noto Sans Osmanya", "Noto Sans Pahawh Hmong", "Noto Sans Palmyrene", "Noto Sans Pau Cin Hau", "Noto Sans PhagsPa", "Noto Sans Phoenician", "Noto Sans Psalter Pahlavi", "Noto Sans Rejang", "Noto Sans Samaritan", "Noto Sans Saurashtra", "Noto Sans Sharada", "Noto Sans Siddham", "Noto Sans Sora Sompeng", "Noto Sans Sundanese", "Noto Sans Syloti Nagri", "Noto Sans Syriac", "Noto Sans Tagalog", "Noto Sans Tagbanwa", "Noto Sans Tai Le", "Noto Sans Tai Tham", "Noto Sans Tai Viet", "Noto Sans Takri", "Noto Sans Thaana", "Noto Sans Tifinagh", "Noto Sans Tirhuta", "Noto Sans Ugaritic", "Noto Sans Vai", "Noto Sans Wancho", "Noto Sans Warang Citi", "Noto Sans Yi", "Noto Sans Zawgyi", "Noto Serif Ahom", "Noto Serif Balinese", "Noto Serif Hmong Nyiakeng", "Noto Serif Kannada", "Noto Serif Myanmar", "Noto Serif Yezidi", "November Bangla Traditional",
++      "October Compressed Devanagari", "October Compressed Gujarati", "October Compressed Gurmukhi", "October Compressed Kannada", "October Compressed Meetei Mayek", "October Compressed Odia", "October Compressed Ol Chiki", "October Compressed Tamil", "October Compressed Telugu", "October Condensed Devanagari", "October Condensed Gujarati", "October Condensed Gurmukhi", "October Condensed Kannada", "October Condensed Meetei Mayek", "October Condensed Odia", "October Condensed Ol Chiki", "October Condensed Tamil", "October Condensed Telugu", "October Devanagari", "October Gujarati", "October Gurmukhi", "October Kannada", "October Meetei Mayek", "October Odia", "October Ol Chiki", "October Tamil", "October Telugu", "Optima", "Oriya MN", "Oriya Sangam MN", "Osaka", "Osaka-Mono",
++      "Padyakke Expanded One", "Palatino", "Papyrus", "Party LET", "PCMyungjo", "Phosphate", "PilGi", "PingFang HK", "PingFang MO", "PingFang SC", "PingFang TC", "Plantagenet Cherokee", "PortagoITC TT", "Princetown LET", "Produkt", "Proxima Nova", "PSL Ornanong Pro", "PT Mono", "PT Sans", "PT Sans Caption", "PT Sans Narrow", "PT Serif", "PT Serif Caption", "Publico Headline", "Publico Text",
++      "Quotes Caps", "Quotes Script",
++      "Raanana", "Raya", "Rockwell",
++      "Sama Devanagari", "Sama Gujarati", "Sama Gurmukhi", "Sama Kannada", "Sama Malayalam", "Sama Tamil", "Sana", "Santa Fe LET", "Sarabun", "Sathu", "Sauber Script", "Savoye LET", "Scheme", "SchoolHouse Cursive B", "SchoolHouse Printed A", "Seravek", "Shobhika", "Shree Devanagari 714", "SignPainter-HouseScript", "Silom", "SimSong", "Sinhala MN", "Sinhala Sangam MN", "Skia", "Snell Roundhand", "Somer", "Songti SC", "Songti TC", "Spot Mono", "Srisakdi", "STFangsong", "STHeiti", "STIXGeneral", "STIXIntegralsD", "STIXIntegralsSm", "STIXIntegralsUp", "STIXIntegralsUpD", "STIXIntegralsUpSm", "STIXNonUnicode", "STIXSizeFiveSym", "STIXSizeFourSym", "STIXSizeOneSym", "STIXSizeThreeSym", "STIXSizeTwoSym", "STIX Two Math", "STIX Two Text", "STIXVariants", "STKaiti", "STSong", "STXihei", "Stone Sans ITC TT", "Stone Sans Sem ITC TT", "Sukhumvit Set", "Superclarendon", "Symbol", "Synchro LET",
++      "Tahoma", "Tamil MN", "Tamil Sangam MN", "Telugu MN", "Telugu Sangam MN", "The Hand Serif", "Thonburi", "Times", "Times New Roman", "Tiro Bangla", "Tiro Devanagari Hindi", "Tiro Devanagari Marathi", "Tiro Devanagari Sanskrit", "Tiro Gurmukhi", "Tiro Kannada", "Tiro Tamil", "Tiro Telugu", "Toppan Bunkyu Gothic", "Toppan Bunkyu Midashi Gothic", "Toppan Bunkyu Midashi Mincho", "Toppan Bunkyu Mincho", "Trattatello", "Trebuchet MS", "Tsukushi A Round Gothic", "Tsukushi B Round Gothic", "Tw Cen MT", "Type Embellishments One LET",
++      "Verdana",
++      "Waseem", "Wawati SC", "Wawati TC", "Webdings", "Weibei SC", "Weibei TC", "Wingdings", "Wingdings 2", "Wingdings 3",
++      "Xingkai SC", "Xingkai TC",
++      "Yaziji", "Yuanti SC", "Yuanti TC", "YuGothic", "YuKyokasho", "YuKyokasho Yoko", "YuMincho", "YuMincho +36p Kana", "Yuppy SC", "Yuppy TC",
++      "Zapf Dingbats", "Zapfino", "Zawra"
++    };
++  } else if (platform == "linux") {
++    return {
++      // Ubuntu Font Family
++      "Ubuntu", "Ubuntu Condensed", "Ubuntu Light", "Ubuntu Mono", "Ubuntu Sans", "Ubuntu Sans Mono",
++      // DejaVu Family
++      "DejaVu Sans", "DejaVu Sans Condensed", "DejaVu Sans Light", "DejaVu Sans Mono",
++      "DejaVu Serif", "DejaVu Serif Condensed", "DejaVu Math TeX Gyre",
++      // Liberation Family
++      "Liberation Sans", "Liberation Sans Narrow", "Liberation Serif", "Liberation Mono",
++      // Noto Family
++      "Noto Sans", "Noto Sans Display", "Noto Sans Mono",
++      "Noto Serif", "Noto Serif Display", "Noto Mono", "Noto Color Emoji",
++      // Nimbus Family
++      "Nimbus Sans", "Nimbus Sans L", "Nimbus Sans Narrow", "Nimbus Roman", "Nimbus Roman No9 L",
++      "Nimbus Mono", "Nimbus Mono L", "Nimbus Mono PS",
++      // FreeFont Family
++      "FreeSans", "FreeSerif", "FreeMono"
++    };
++  }
++  return {};
++}
++
++// 判断是否为基础字体（不应被处理）
++static bool IsBasicFont(const std::string& font_family) {
++  static const base::NoDestructor<std::set<std::string>> basic_fonts({
++    // 系统特殊字体
++    "-webkit-standard",
++    "system-ui",
++
++    // 基础西文字体
++    "Arial",
++    "Calibri",
++    "Courier New",
++    "Courier",
++    "Helvetica",
++    "Helvetica Neue",
++    "Lucida Grande",
++    "Microsoft Sans Serif",
++    "MS Sans Serif",
++    "MS Serif",
++    "MS UI Gothic",
++    "Roboto",
++    "Sans",
++    "Segoe UI",
++    "Times New Roman",
++    "Times",
++
++    // CSS通用字体
++    "cursive",
++    "fantasy",
++    "monospace",
++    "sans-serif",
++    "serif",
++    "math",
++
++    // 系统字体别名
++    "BlinkMacSystemFont"
++  });
++
++  return basic_fonts->count(font_family) > 0;
++}
++
++
+ const FontPlatformData* FontCache::GetFontPlatformData(
+     const FontDescription& font_description,
+     const FontFaceCreationParams& creation_params,
+@@ -164,6 +283,75 @@
+     return SystemFontPlatformData(font_description);
+   }
+ #endif
++
++  const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++  // 字体指纹处理逻辑 - 不应用于最后手段字体
++  if (command_line->HasSwitch(switches::kFingerprint) &&
++      (!command_line->HasSwitch(switches::kDisableSpoofing) ||
++       command_line->GetSwitchValueASCII(switches::kDisableSpoofing).find("font") == std::string::npos) &&
++      creation_params.CreationType() == kCreateFontByFamily &&
++      alternate_font_name != AlternateFontName::kLastResort) {
++
++    const std::string requested_family = creation_params.Family().Utf8();
++
++    // 基础字体直接返回，不进行任何处理
++    if (IsBasicFont(requested_family)) {
++      return font_platform_data_cache_.GetOrCreateFontPlatformData(
++          this, font_description, creation_params, alternate_font_name);
++    }
++
++    // 检测当前操作系统
++    const char* current_os =
++#if BUILDFLAG(IS_WIN)
++      "windows";
++#elif BUILDFLAG(IS_MAC)
++      "macos";
++#elif BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
++      "linux";
++#else
++      "linux";  // 默认
++#endif
++
++
++    std::string spoofed_platform = command_line->GetSwitchValueASCII(switches::kFingerprintPlatform);
++    if (spoofed_platform.empty()) {
++      spoofed_platform = current_os;
++    }
++
++    std::vector<std::string> current_os_fonts = GetPlatformFonts(current_os);
++    std::vector<std::string> platform_fonts = GetPlatformFonts(spoofed_platform);
++
++    std::string fingerprint = command_line->GetSwitchValueASCII(switches::kFingerprint);
++    uint32_t hash = static_cast<uint32_t>(
++        std::hash<std::string>{}(fingerprint + requested_family));
++
++    if (spoofed_platform != current_os) {
++      // 获取伪装平台的字体列表
++      bool is_platform_font = std::find(platform_fonts.begin(), platform_fonts.end(),
++                                        requested_family) != platform_fonts.end();
++      if (is_platform_font) {
++        // 伪装平台的字体，用当前系统的字体替代
++        size_t index = hash % current_os_fonts.size();
++        FontFaceCreationParams substitute_params(AtomicString(current_os_fonts[index].c_str()));
++        return font_platform_data_cache_.GetOrCreateFontPlatformData(
++            this, font_description, substitute_params, alternate_font_name);
++      } else {
++        // 非平台字体处理：95%概率隐藏
++        float probability = static_cast<float>(hash) / static_cast<float>(std::numeric_limits<uint32_t>::max());
++        if (probability < 0.95) {
++          return nullptr;
++        }
++        // 5%概率显示，继续默认流程
++      }
++    } else {
++      // 系统相同，随机隐藏2%的字体以生成指纹
++      float probability = static_cast<float>(hash) / static_cast<float>(std::numeric_limits<uint32_t>::max());
++      if (probability < 0.02) {
++        return nullptr;
++      }
++    }
++  }
++
+ 
+   return font_platform_data_cache_.GetOrCreateFontPlatformData(
+       this, font_description, creation_params, alternate_font_name);
+diff --git a/third_party/blink/renderer/platform/graphics/image_data_buffer.cc b/third_party/blink/renderer/platform/graphics/image_data_buffer.cc
+--- a/third_party/blink/renderer/platform/graphics/image_data_buffer.cc
++++ b/third_party/blink/renderer/platform/graphics/image_data_buffer.cc
+@@ -32,9 +32,13 @@
+ 
+ #include "third_party/blink/renderer/platform/graphics/image_data_buffer.h"
+ 
++#include "base/command_line.h"
+ #include "base/compiler_specific.h"
+ #include "base/memory/ptr_util.h"
++#include "components/ungoogled/ungoogled_switches.h"
++#include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
+ #include "third_party/blink/renderer/platform/image-encoders/image_encoder_utils.h"
++#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
+ #include "third_party/blink/renderer/platform/wtf/text/base64.h"
+ #include "third_party/blink/renderer/platform/wtf/text/strcat.h"
+ #include "third_party/skia/include/core/SkImage.h"
+@@ -130,6 +134,13 @@
+ bool ImageDataBuffer::EncodeImage(const ImageEncodingMimeType mime_type,
+                                   const double& quality,
+                                   Vector<unsigned char>* encoded_image) const {
++  const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++  if (command_line->HasSwitch(switches::kFingerprint) &&
++      (!command_line->HasSwitch(switches::kDisableSpoofing) ||
++       command_line->GetSwitchValueASCII(switches::kDisableSpoofing).find("canvas") == std::string::npos)) {
++    // shuffle subchannel color data within the pixmap
++    StaticBitmapImage::ShuffleSubchannelColorData(pixmap_);
++  }
+   return ImageEncoder::Encode(encoded_image, pixmap_, mime_type, quality);
+ }
+ 
+diff --git a/third_party/blink/renderer/platform/graphics/static_bitmap_image.cc b/third_party/blink/renderer/platform/graphics/static_bitmap_image.cc
+--- a/third_party/blink/renderer/platform/graphics/static_bitmap_image.cc
++++ b/third_party/blink/renderer/platform/graphics/static_bitmap_image.cc
+@@ -3,19 +3,28 @@
+ // found in the LICENSE file.
+ 
+ #include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
+-
++#include <functional>
++
++#include <unordered_set>
++#include <vector>
++#include "base/command_line.h"
++#include "base/rand_util.h"
++#include "base/logging.h"
+ #include "base/numerics/checked_math.h"
++#include "components/ungoogled/ungoogled_switches.h"
+ #include "gpu/command_buffer/client/gles2_interface.h"
+ #include "third_party/blink/renderer/platform/graphics/accelerated_static_bitmap_image.h"
+ #include "third_party/blink/renderer/platform/graphics/graphics_context.h"
+ #include "third_party/blink/renderer/platform/graphics/image_observer.h"
+ #include "third_party/blink/renderer/platform/graphics/paint/paint_image.h"
+ #include "third_party/blink/renderer/platform/graphics/unaccelerated_static_bitmap_image.h"
++#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
+ #include "third_party/blink/renderer/platform/transforms/affine_transform.h"
+ #include "third_party/skia/include/core/SkCanvas.h"
+ #include "third_party/skia/include/core/SkImage.h"
+ #include "third_party/skia/include/core/SkPaint.h"
+ #include "third_party/skia/include/core/SkSurface.h"
++#include "third_party/skia/src/core/SkColorData.h"
+ #include "ui/gfx/geometry/skia_conversions.h"
+ #include "v8/include/v8.h"
+ 
+@@ -115,4 +124,298 @@
+                         ToSkiaRectConstraint(draw_options.clamping_mode));
+ }
+ 
++// set the component to maximum-delta if it is >= maximum, or add to existing color component (color + delta)
++#define shuffleComponent(color, max, delta) ( (color) >= (max) ? ((max)-(delta)) : ((color)+(delta)) )
++
++
++void StaticBitmapImage::ShuffleSubchannelColorData(const SkPixmap& pixmap) {
++  const SkImageInfo& info = pixmap.info();
++  const int w = info.width(), h = info.height();
++  if (!pixmap.addr() || pixmap.rowBytes() < info.minRowBytes())
++    return;
++
++  // skip tiny images; info.width()/height() can also be 0
++  if ((w < 8) || (h < 8)) {
++    return;
++  }
++
++  std::string seed_str = "0";
++  const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
++  if (command_line->HasSwitch(switches::kFingerprint) &&
++      (!command_line->HasSwitch(switches::kDisableSpoofing) ||
++       command_line->GetSwitchValueASCII(switches::kDisableSpoofing).find("canvas") == std::string::npos)) {
++      seed_str = command_line->GetSwitchValueASCII(switches::kFingerprint);
++  }
++
++  auto colorType = info.colorType();
++  auto fRowBytes = pixmap.rowBytes(); // actual stride
++
++  DLOG(INFO) << "BRM: ShuffleSubchannelColorData() w=" << w << " h=" << h << " colorType=" << colorType << " fRowBytes=" << fRowBytes;
++
++  auto max_pixels = (static_cast<int64_t>(w) * h) / 128;
++  if (max_pixels > 10) {
++    max_pixels = 10;
++  } else if (max_pixels < 2) {
++    max_pixels = 2;
++  }
++
++  int modified_pixels = 0;
++  std::unordered_set<int> processed_rows;
++  std::unordered_set<int> processed_cols;
++
++  // 扫描所有像素，找出边缘像素并直接处理
++  for (int y = 0; y < h - 1 && modified_pixels < max_pixels; y++) {  // 排除最后一行
++    if (processed_rows.count(y)) continue;  // 跳过已处理的行
++    for (int x = 0; x < w - 1 && modified_pixels < max_pixels; x++) {  // 排除最后一列
++      if (processed_cols.count(x)) continue;  // 跳过已处理的列
++      bool isEdge = false;
++      bool isValidColor = false;
++
++      // 检查当前像素是否为边缘像素，并且不是纯黑或纯白
++      switch (colorType) {
++        case kRGBA_8888_SkColorType:
++        {
++          auto *current = pixmap.writable_addr32(x, y);
++          auto *right = pixmap.writable_addr32(x + 1, y);
++          auto *bottom = pixmap.writable_addr32(x, y + 1);
++
++          auto r = SkGetPackedR32(*current);
++          auto g = SkGetPackedG32(*current);
++          auto b = SkGetPackedB32(*current);
++
++          // 检查是否不是纯黑或纯白
++          isValidColor = !((r == 0 && g == 0 && b == 0) || (r == 255 && g == 255 && b == 255));
++
++          // 检查是否为边缘（与右侧或下侧像素不同）
++          if (isValidColor) {
++            isEdge = (*current != *right) || (*current != *bottom);
++          }
++
++          if (isEdge && isValidColor) {
++            // 直接处理这个像素
++            std::string pixel_key_base = seed_str + "_x" + std::to_string(x) + "_y" + std::to_string(y);
++            std::string pixel_key_r = pixel_key_base + "_r";
++            std::string pixel_key_g = pixel_key_base + "_g";
++            std::string pixel_key_b = pixel_key_base + "_b";
++
++            uint8_t shuffleR = std::hash<std::string>{}(pixel_key_r) & 1;
++            uint8_t shuffleG = std::hash<std::string>{}(pixel_key_g) & 1;
++            uint8_t shuffleB = std::hash<std::string>{}(pixel_key_b) & 1;
++
++            auto a = SkGetPackedA32(*current);
++            r = (r & ~0x1) | shuffleR;
++            g = (g & ~0x1) | shuffleG;
++            b = (b & ~0x1) | shuffleB;
++
++            *current = (a << SK_A32_SHIFT) | (r << SK_R32_SHIFT) |
++                      (g << SK_G32_SHIFT) | (b << SK_B32_SHIFT);
++            modified_pixels++;
++            processed_rows.insert(y);
++            processed_cols.insert(x);
++          }
++        }
++        break;
++
++        case kBGRA_8888_SkColorType:
++        {
++          auto *current = pixmap.writable_addr32(x, y);
++          auto *right = pixmap.writable_addr32(x + 1, y);
++          auto *bottom = pixmap.writable_addr32(x, y + 1);
++
++          auto b = SkGetPackedR32(*current);
++          auto g = SkGetPackedG32(*current);
++          auto r = SkGetPackedB32(*current);
++
++          // 检查是否不是纯黑或纯白
++          isValidColor = !((r == 0 && g == 0 && b == 0) || (r == 255 && g == 255 && b == 255));
++
++          // 检查是否为边缘（与右侧或下侧像素不同）
++          if (isValidColor) {
++            isEdge = (*current != *right) || (*current != *bottom);
++          }
++
++          if (isEdge && isValidColor) {
++            // 直接处理这个像素
++            std::string pixel_key_base = seed_str + "_x" + std::to_string(x) + "_y" + std::to_string(y);
++            std::string pixel_key_r = pixel_key_base + "_r";
++            std::string pixel_key_g = pixel_key_base + "_g";
++            std::string pixel_key_b = pixel_key_base + "_b";
++
++            uint8_t shuffleR = std::hash<std::string>{}(pixel_key_r) & 1;
++            uint8_t shuffleG = std::hash<std::string>{}(pixel_key_g) & 1;
++            uint8_t shuffleB = std::hash<std::string>{}(pixel_key_b) & 1;
++
++            auto a = SkGetPackedA32(*current);
++            r = (r & ~0x1) | shuffleR;
++            g = (g & ~0x1) | shuffleG;
++            b = (b & ~0x1) | shuffleB;
++
++            *current = (a << SK_BGRA_A32_SHIFT) | (r << SK_BGRA_R32_SHIFT) |
++                      (g << SK_BGRA_G32_SHIFT) | (b << SK_BGRA_B32_SHIFT);
++            modified_pixels++;
++            processed_rows.insert(y);
++            processed_cols.insert(x);
++          }
++        }
++        break;
++
++        case kGray_8_SkColorType:
++        {
++          auto *current = pixmap.writable_addr8(x, y);
++          auto *right = pixmap.writable_addr8(x + 1, y);
++          auto *bottom = pixmap.writable_addr8(x, y + 1);
++
++          isValidColor = (*current != 0 && *current != 255);
++          if (isValidColor) {
++            isEdge = (*current != *right) || (*current != *bottom);
++          }
++
++          if (isEdge && isValidColor) {
++            // 直接处理这个像素
++            std::string pixel_key_base = seed_str + "_x" + std::to_string(x) + "_y" + std::to_string(y);
++            std::string pixel_key_b = pixel_key_base + "_b";
++            uint8_t shuffleB = std::hash<std::string>{}(pixel_key_b) & 1;
++            *current = (*current & ~0x1) | shuffleB;
++            modified_pixels++;
++            processed_rows.insert(y);
++            processed_cols.insert(x);
++          }
++        }
++        break;
++
++        case kRGB_565_SkColorType:
++        {
++          auto *current = pixmap.writable_addr16(x, y);
++          auto *right = pixmap.writable_addr16(x + 1, y);
++          auto *bottom = pixmap.writable_addr16(x, y + 1);
++
++          unsigned r = SkPacked16ToR32(*current);
++          unsigned g = SkPacked16ToG32(*current);
++          unsigned b = SkPacked16ToB32(*current);
++
++          isValidColor = !((r == 0 && g == 0 && b == 0) || (r == 31 && g == 63 && b == 31));
++          if (isValidColor) {
++            isEdge = (*current != *right) || (*current != *bottom);
++          }
++
++          if (isEdge && isValidColor) {
++            // 直接处理这个像素
++            std::string pixel_key_base = seed_str + "_x" + std::to_string(x) + "_y" + std::to_string(y);
++            std::string pixel_key_r = pixel_key_base + "_r";
++            std::string pixel_key_g = pixel_key_base + "_g";
++            std::string pixel_key_b = pixel_key_base + "_b";
++
++            uint8_t shuffleR = std::hash<std::string>{}(pixel_key_r) & 1;
++            uint8_t shuffleG = std::hash<std::string>{}(pixel_key_g) & 1;
++            uint8_t shuffleB = std::hash<std::string>{}(pixel_key_b) & 1;
++
++            r = (r & ~0x1) | (shuffleR & 0x1);
++            g = (g & ~0x1) | (shuffleG & 0x1);
++            b = (b & ~0x1) | (shuffleB & 0x1);
++
++            unsigned r16 = (r & SK_R16_MASK) << SK_R16_SHIFT;
++            unsigned g16 = (g & SK_G16_MASK) << SK_G16_SHIFT;
++            unsigned b16 = (b & SK_B16_MASK) << SK_B16_SHIFT;
++
++            *current = r16 | g16 | b16;
++            modified_pixels++;
++            processed_rows.insert(y);
++            processed_cols.insert(x);
++          }
++        }
++        break;
++
++        case kARGB_4444_SkColorType:
++        {
++          auto *current = pixmap.writable_addr16(x, y);
++          auto *right = pixmap.writable_addr16(x + 1, y);
++          auto *bottom = pixmap.writable_addr16(x, y + 1);
++
++          auto r = SkGetPackedR4444(*current);
++          auto g = SkGetPackedG4444(*current);
++          auto b = SkGetPackedB4444(*current);
++
++          isValidColor = !((r == 0 && g == 0 && b == 0) || (r == 15 && g == 15 && b == 15));
++          if (isValidColor) {
++            isEdge = (*current != *right) || (*current != *bottom);
++          }
++
++          if (isEdge && isValidColor) {
++            // 直接处理这个像素
++            std::string pixel_key_base = seed_str + "_x" + std::to_string(x) + "_y" + std::to_string(y);
++            std::string pixel_key_r = pixel_key_base + "_r";
++            std::string pixel_key_g = pixel_key_base + "_g";
++            std::string pixel_key_b = pixel_key_base + "_b";
++
++            uint8_t shuffleR = std::hash<std::string>{}(pixel_key_r) & 1;
++            uint8_t shuffleG = std::hash<std::string>{}(pixel_key_g) & 1;
++            uint8_t shuffleB = std::hash<std::string>{}(pixel_key_b) & 1;
++
++            auto a = SkGetPackedA4444(*current);
++            r = (r & ~0x1) | (shuffleR & 0x1);
++            g = (g & ~0x1) | (shuffleG & 0x1);
++            b = (b & ~0x1) | (shuffleB & 0x1);
++
++            unsigned a4 = (a & 0xF) << SK_A4444_SHIFT;
++            unsigned r4 = (r & 0xF) << SK_R4444_SHIFT;
++            unsigned g4 = (g & 0xF) << SK_G4444_SHIFT;
++            unsigned b4 = (b & 0xF) << SK_B4444_SHIFT;
++
++            *current = r4 | b4 | g4 | a4;
++            modified_pixels++;
++            processed_rows.insert(y);
++            processed_cols.insert(x);
++          }
++        }
++        break;
++
++        case kAlpha_8_SkColorType:
++        {
++          auto *current = pixmap.writable_addr8(x, y);
++          auto *right = pixmap.writable_addr8(x + 1, y);
++          auto *bottom = pixmap.writable_addr8(x, y + 1);
++
++          auto r = SkColorGetR(*current);
++          auto g = SkColorGetG(*current);
++          auto b = SkColorGetB(*current);
++
++          isValidColor = !((r == 0 && g == 0 && b == 0) || (r == 255 && g == 255 && b == 255));
++          if (isValidColor) {
++            isEdge = (*current != *right) || (*current != *bottom);
++          }
++
++          if (isEdge && isValidColor) {
++            // 直接处理这个像素
++            std::string pixel_key_base = seed_str + "_x" + std::to_string(x) + "_y" + std::to_string(y);
++            std::string pixel_key_r = pixel_key_base + "_r";
++            std::string pixel_key_g = pixel_key_base + "_g";
++            std::string pixel_key_b = pixel_key_base + "_b";
++
++            uint8_t shuffleR = std::hash<std::string>{}(pixel_key_r) & 1;
++            uint8_t shuffleG = std::hash<std::string>{}(pixel_key_g) & 1;
++            uint8_t shuffleB = std::hash<std::string>{}(pixel_key_b) & 1;
++
++            auto a = SkColorGetA(*current);
++            r = (r & ~0x1) | shuffleR;
++            g = (g & ~0x1) | shuffleG;
++            b = (b & ~0x1) | shuffleB;
++
++            *current = SkColorSetARGB(a, r, g, b);
++            modified_pixels++;
++            processed_rows.insert(y);
++            processed_cols.insert(x);
++          }
++        }
++        break;
++
++        default:
++          break;
++      }
++    }
++  }
++}
++
++#undef writable_addr
++#undef shuffleComponent
++
+ }  // namespace blink
+diff --git a/third_party/blink/renderer/platform/graphics/static_bitmap_image.h b/third_party/blink/renderer/platform/graphics/static_bitmap_image.h
+--- a/third_party/blink/renderer/platform/graphics/static_bitmap_image.h
++++ b/third_party/blink/renderer/platform/graphics/static_bitmap_image.h
+@@ -6,6 +6,7 @@
+ #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_GRAPHICS_STATIC_BITMAP_IMAGE_H_
+ 
+ #include "base/byte_size.h"
++#include "third_party/skia/include/core/SkPixmap.h"
+ #include "base/notreached.h"
+ #include "components/viz/common/resources/shared_image_format_utils.h"
+ #include "gpu/command_buffer/client/client_shared_image.h"
+@@ -37,6 +38,8 @@
+       ImageOrientation = ImageOrientationEnum::kDefault);
+ 
+   StaticBitmapImage(ImageOrientation orientation) : orientation_(orientation) {}
++
++  static void ShuffleSubchannelColorData(const SkPixmap& pixmap);
+ 
+   bool IsStaticBitmapImage() const override { return true; }
+ 
+diff --git a/third_party/blink/renderer/platform/image-encoders/image_encoder.cc b/third_party/blink/renderer/platform/image-encoders/image_encoder.cc
+--- a/third_party/blink/renderer/platform/image-encoders/image_encoder.cc
++++ b/third_party/blink/renderer/platform/image-encoders/image_encoder.cc
+@@ -13,6 +13,8 @@
+ #include <stdio.h>  // Needed by jpeglib.h
+ 
+ #include "jpeglib.h"  // for JPEG_MAX_DIMENSION
++#include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
++#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
+ #include "third_party/libwebp/src/src/webp/encode.h"  // for WEBP_MAX_DIMENSION
+ 
+ namespace blink {
+@@ -44,6 +46,10 @@
+                           const SkPixmap& src,
+                           ImageEncodingMimeType mime_type,
+                           double quality) {
++  if (RuntimeEnabledFeatures::FingerprintingCanvasImageDataNoiseEnabled()) {
++    // shuffle subchannel color data within the pixmap
++    StaticBitmapImage::ShuffleSubchannelColorData(src);
++  }
+   switch (mime_type) {
+     case kMimeTypeJpeg: {
+       SkJpegEncoder::Options options;
+diff --git a/third_party/blink/renderer/platform/runtime_enabled_features.json5 b/third_party/blink/renderer/platform/runtime_enabled_features.json5
+--- a/third_party/blink/renderer/platform/runtime_enabled_features.json5
++++ b/third_party/blink/renderer/platform/runtime_enabled_features.json5
+@@ -3080,6 +3080,15 @@
+       status: "stable",
+     },
+     {
++      name: "FingerprintingClientRectsNoise",
++    },
++    {
++      name: "FingerprintingCanvasMeasureTextNoise",
++    },
++    {
++      name: "FingerprintingCanvasImageDataNoise",
++    },
++    {
+       name: "Fledge",
+       status: "stable",
+       base_feature: "none",
+diff --git a/ui/gfx/geometry/quad_f.cc b/ui/gfx/geometry/quad_f.cc
+--- a/ui/gfx/geometry/quad_f.cc
++++ b/ui/gfx/geometry/quad_f.cc
+@@ -137,6 +137,22 @@
+   p4_.Scale(x_scale, y_scale);
+ }
+ 
++void QuadF::Offset(float x_offset, float y_offset) {
++  // 计算轴对齐边界框的宽高
++  const auto [min, max] = Extents();
++  float width = max.x() - min.x();
++  float height = max.y() - min.y();
++
++  if (WithinEpsilon(width, 0.0f) || WithinEpsilon(height, 0.0f)) {
++    return;
++  }
++
++  p1_.Offset(x_offset, y_offset);
++  p2_.Offset(x_offset, y_offset);
++  p3_.Offset(x_offset, y_offset);
++  p4_.Offset(x_offset, y_offset);
++}
++
+ void QuadF::operator+=(const Vector2dF& rhs) {
+   p1_ += rhs;
+   p2_ += rhs;
+diff --git a/ui/gfx/geometry/quad_f.h b/ui/gfx/geometry/quad_f.h
+--- a/ui/gfx/geometry/quad_f.h
++++ b/ui/gfx/geometry/quad_f.h
+@@ -106,6 +106,11 @@
+   // Scale each point in the quad by the scale factors along each axis.
+   void Scale(float x_scale, float y_scale);
+ 
++  // Offset each point in the quad by the offset values.
++  void Offset(float offset) { Offset(offset, offset); }
++  // Offset each point in the quad by the offset values along each axis.
++  void Offset(float x_offset, float y_offset);
++
+   // Tests whether any part of the rectangle intersects with this quad.
+   // This only works for convex quads.
+   // This intersection is edge-inclusive and will return true even if the
+diff --git a/v8/src/inspector/v8-runtime-agent-impl.cc b/v8/src/inspector/v8-runtime-agent-impl.cc
+--- a/v8/src/inspector/v8-runtime-agent-impl.cc
++++ b/v8/src/inspector/v8-runtime-agent-impl.cc
+@@ -1070,33 +1070,9 @@
+   m_frontend.flush();
+ }
+ 
+-void V8RuntimeAgentImpl::addBindings(InspectedContext* context) {
+-  int contextGroupId = context->contextGroupId();
+-  int contextId = context->contextId();
+-  const String16 contextName = context->humanReadableName();
+-  if (!m_enabled) return;
+-
+-  protocol::DictionaryValue* globalBindings =
+-      m_state->getObject(V8RuntimeAgentImplState::globalBindings);
+-  if (globalBindings) {
+-    for (size_t i = 0; i < globalBindings->size(); ++i) {
+-      addBinding(context, globalBindings->at(i).first);
+-      if (!m_inspector->getContext(contextGroupId, contextId)) return;
+-    }
+-  }
+-
+-  protocol::DictionaryValue* contextBindings =
+-      m_state->getObject(V8RuntimeAgentImplState::contextBindings);
+-  if (contextBindings) {
+-    protocol::DictionaryValue* bindings =
+-        contextBindings->getObject(contextName);
+-    if (bindings) {
+-      for (size_t i = 0; i < bindings->size(); ++i) {
+-        addBinding(context, bindings->at(i).first);
+-        if (!m_inspector->getContext(contextGroupId, contextId)) return;
+-      }
+-    }
+-  }
++void V8RuntimeAgentImpl::addBindings(InspectedContext* /*context*/) {
++  // Preserve the behavior of the verified 149 port.
++  return;
+ }
+ 
+ void V8RuntimeAgentImpl::restore() {
+@@ -1229,7 +1205,7 @@
+ }
+ 
+ void V8RuntimeAgentImpl::messageAdded(V8ConsoleMessage* message) {
+-  if (m_enabled) reportMessage(message, true);
++  // if (m_enabled) reportMessage(message, true);
+ }
+ 
+ bool V8RuntimeAgentImpl::reportMessage(V8ConsoleMessage* message,
+diff --git a/v8/src/inspector/v8-runtime-agent-impl.h b/v8/src/inspector/v8-runtime-agent-impl.h
+--- a/v8/src/inspector/v8-runtime-agent-impl.h
++++ b/v8/src/inspector/v8-runtime-agent-impl.h
+@@ -160,7 +160,7 @@
+                std::unique_ptr<protocol::DictionaryValue> hints,
+                int executionContextId);
+   void messageAdded(V8ConsoleMessage*);
+-  bool enabled() const { return m_enabled; }
++  bool enabled() const { return false; }
+ 
+  private:
+   bool reportMessage(V8ConsoleMessage*, bool generatePreview);

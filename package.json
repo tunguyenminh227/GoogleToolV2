@@ -1,0 +1,65 @@
+{
+  "name": "googletool",
+  "version": "0.7.1",
+  "description": "Trình quản lý profile Orbita qua GoLogin SDK",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron v2",
+    "start:v1": "electron .",
+    "start:v2": "electron v2",
+    "test:v2": "node --test v2/tests/*.test.js",
+    "test:v2:ui": "electron v2/tests/ui-smoke.cjs",
+    "rebuild": "electron-rebuild",
+    "dist": "electron-builder --win",
+    "pack": "electron-packager . GoogleTool --platform=win32 --arch=x64 --out=release --overwrite --prune=true --ignore=\"(^/release$|^/dist$|^/Profiles$|\\.lic$|^/Extensions$)\""
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@electron/packager": "^20.0.0",
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "dependencies": {
+    "gologin": "^2.1.6",
+    "proxy-chain": "^3.0.1",
+    "puppeteer-core": "2.1.1"
+  },
+  "build": {
+    "appId": "com.googletool.app",
+    "productName": "GoogleTool",
+    "directories": {
+      "output": "dist"
+    },
+    "npmRebuild": false,
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/gologin/**/*",
+      "node_modules/sqlite3/**/*",
+      "**/*.node"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "GoogleTool"
+    }
+  }
+}
