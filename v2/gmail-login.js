@@ -328,29 +328,29 @@ const stepRecaptcha = t('gmail.stepRecaptcha', async (page, options) => {
     return;
   }
 
-  // Nếu chưa tự chuyển, bấm nút "Tiếp theo" (Next) và chờ URL đổi (tạm thời comment lại)
-  // console.log('[login-trace] ➡️ Trang chưa tự chuyển -> Bấm Tiếp theo sau khi giải CAPTCHA...');
-  // await clickAndWaitUrl(page, t('gmail.next', async () => {
-  //   assertAccounts(page);
-  //   let clicked = false;
-  //   if (solver && typeof solver.clickNext === 'function') {
-  //     const clickRes = await solver.clickNext(evaluate);
-  //     if (clickRes && clickRes !== 'not-found') clicked = true;
-  //   }
-  //   if (!clicked) {
-  //     const fallbackSels = ['#identifierNext button', '#identifierNext', '#recaptchaNext button', '#recaptchaNext', 'button[type="submit"]'];
-  //     for (const sel of fallbackSels) {
-  //       try {
-  //         const el = await page.$(sel);
-  //         if (el) {
-  //           await page.click(sel);
-  //           clicked = true;
-  //           break;
-  //         }
-  //       } catch (_) {}
-  //     }
-  //   }
-  // }), recaptchaTimeoutMs);
+  // Nếu chưa tự chuyển, bấm nút "Tiếp theo" (Next) và chờ URL đổi
+  console.log('[login-trace] ➡️ Trang chưa tự chuyển -> Bấm Tiếp theo sau khi giải CAPTCHA...');
+  await clickAndWaitUrl(page, t('gmail.next', async () => {
+    assertAccounts(page);
+    let clicked = false;
+    if (solver && typeof solver.clickNext === 'function') {
+      const clickRes = await solver.clickNext(evaluate);
+      if (clickRes && clickRes !== 'not-found') clicked = true;
+    }
+    if (!clicked) {
+      const fallbackSels = ['#identifierNext button', '#identifierNext', '#recaptchaNext button', '#recaptchaNext', 'button[type="submit"]'];
+      for (const sel of fallbackSels) {
+        try {
+          const el = await page.$(sel);
+          if (el) {
+            await page.click(sel);
+            clicked = true;
+            break;
+          }
+        } catch (_) {}
+      }
+    }
+  }), recaptchaTimeoutMs);
 });
 const handleRecaptcha = stepRecaptcha;
 

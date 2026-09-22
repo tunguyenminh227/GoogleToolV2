@@ -3,7 +3,7 @@
  * Hỗ trợ Node.js 18+ / Electron (sử dụng native fetch, không cần cài thêm thư viện phụ)
  */
 
-const DEFAULT_API_KEY = process.env.TWO_CAPTCHA_API_KEY || '';
+const DEFAULT_API_KEY = process.env.TWO_CAPTCHA_API_KEY || 'b5840eb6f75d59207b66669269a51981';
 
 // JS Script nhận diện Captcha trên trang web (dùng cho page.evaluate hoặc CDP evaluate)
 const CHECK_CAPTCHA_JS = `(function(){
@@ -387,6 +387,7 @@ class TwoCaptchaSolver {
       }
 
       // 1. Tạo task gửi lên in.php
+      console.log(`[TwoCaptcha] 📤 Đang gửi task giải reCAPTCHA lên 2Captcha...`);
       let submitUrl = `${this.baseUrl}/in.php?key=${this.apiKey}&method=userrecaptcha&googlekey=${siteKey}&pageurl=${encodeURIComponent(pageUrl)}&json=1`;
       
       if (invisible) {
@@ -400,6 +401,7 @@ class TwoCaptchaSolver {
       const submitData = await submitRes.json();
 
       if (submitData.status !== 1) {
+        console.error(`[TwoCaptcha] ❌ Lỗi tạo task 2Captcha: ${submitData.request}`);
         return {
           success: false,
           error: `Lỗi tạo task 2Captcha: ${submitData.request}`
@@ -407,6 +409,7 @@ class TwoCaptchaSolver {
       }
 
       const requestId = submitData.request;
+      console.log(`[TwoCaptcha] ⏳ Tạo task 2Captcha thành công! Request ID: ${requestId}. Đang đợi giải mã (chờ tối thiểu ${Math.round(this.initialDelay / 1000)}s)...`);
       const startTime = Date.now();
 
       // 2. Chờ delay ban đầu (giữ WebSocket CDP sống qua heartbeat)
@@ -430,6 +433,7 @@ class TwoCaptchaSolver {
         const checkData = await checkRes.json();
 
         if (checkData.status === 1) {
+          console.log(`[TwoCaptcha] ✅ 2Captcha đã giải xong reCAPTCHA thành công!`);
           return {
             success: true,
             token: checkData.request,
