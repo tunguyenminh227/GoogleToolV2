@@ -309,9 +309,9 @@ const stepRecaptcha = t('gmail.stepRecaptcha', async (page, options) => {
         } finally {
           trace.traceOut(spanSolve, solveResult && solveResult.success ? 'ok' : 'error');
         }
-        try { if (page.keyboard && typeof page.keyboard.press === 'function') await page.keyboard.press('Escape'); } catch (_) {}
+        //try { if (page.keyboard && typeof page.keyboard.press === 'function') await page.keyboard.press('Escape'); } catch (_) {}
         await solver.injectToken(checkboxEvaluate, solveResult.token);
-        try { if (page.keyboard && typeof page.keyboard.press === 'function') await page.keyboard.press('Escape'); } catch (_) {}
+        //try { if (page.keyboard && typeof page.keyboard.press === 'function') await page.keyboard.press('Escape'); } catch (_) {}
       }
       result = { success: true, autoRedirected: classify(page.url()) !== 'recaptcha' };
     }

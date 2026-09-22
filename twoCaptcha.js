@@ -259,49 +259,37 @@ function getInjectScript(token) {
         }
       }
 
-      // Ưu tiên 2: Quét window.___grecaptcha_cfg.clients một cách an toàn
+      // Ưu tiên 2: Quét đệ quy trong window.___grecaptcha_cfg.clients theo chuẩn 2Captcha
       if (!called && typeof window.___grecaptcha_cfg !== 'undefined' && window.___grecaptcha_cfg.clients) {
         var clients = window.___grecaptcha_cfg.clients;
+        var findCallback = function(obj, depth) {
+          if (!obj || depth > 5) return null;
+          for (var key in obj) {
+            try {
+              if (key === 'callback') {
+                if (typeof obj[key] === 'function') return obj[key];
+                if (typeof obj[key] === 'string' && typeof window[obj[key]] === 'function') return window[obj[key]];
+              }
+              if (typeof obj[key] === 'object' && obj[key] !== null) {
+                var found = findCallback(obj[key], depth + 1);
+                if (found) return found;
+              }
+            } catch(e) {}
+          }
+          return null;
+        };
+
         for (var cid in clients) {
           var client = clients[cid];
           if (!client || typeof client !== 'object') continue;
-
-          // A. Tìm callback trực tiếp trên client
-          if (typeof client.callback === 'function') {
+          var cb = findCallback(client, 0);
+          if (typeof cb === 'function') {
             try {
-              client.callback(token);
+              cb(token);
               called = true;
-            } catch(e) {}
-          } else if (typeof client.callback === 'string' && typeof window[client.callback] === 'function') {
-            try {
-              window[client.callback](token);
-              called = true;
-            } catch(e) {}
+              break;
+            } catch(errCb) {}
           }
-
-          // B. Tìm callback trên các object cấu hình trực tiếp (chỉ cấp 1, không đệ quy sâu để tránh gọi trúng RPC handler)
-          if (!called) {
-            for (var key in client) {
-              var sub = client[key];
-              if (sub && typeof sub === 'object') {
-                if (typeof sub.callback === 'function') {
-                  try {
-                    sub.callback(token);
-                    called = true;
-                    break;
-                  } catch(e) {}
-                } else if (typeof sub.callback === 'string' && typeof window[sub.callback] === 'function') {
-                  try {
-                    window[sub.callback](token);
-                    called = true;
-                    break;
-                  } catch(e) {}
-                }
-              }
-            }
-          }
-
-          if (called) break;
         }
       }
 
@@ -790,8 +778,8 @@ class TwoCaptchaSolver {
     // BƯỚC 4: TỰ ĐỘNG BẤM TIẾP THEO (nếu trang chưa tự chuyển)
     // =========================================================================
     if (!autoRedirected) {
-      console.log(`[TwoCaptcha] ➡️ Trang chưa tự chuyển -> Bấm Tiếp theo...`);
-      await this.clickNext(evaluate);
+      console.log(`[TwoCaptcha] ➡️ Trang chưa tự chuyển`);
+      //await this.clickNext(evaluate);
     }
 
     return {
