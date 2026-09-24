@@ -29,6 +29,27 @@ let settings = {};
 const running = new Map();
 const deleting = new Set();
 
+const logProfileCreated = trace.traced('logProfileCreated', profile => {
+  const fp = profile.fingerprint || {};
+  const gpuLabel = fp.gpu === 'real' ? 'GPU thật (real)' : `GPU tự động theo seed (${fp.gpu || 'auto'})`;
+  const ipProxy = fp.proxyUrl ? (fp.proxyUsername ? `${fp.proxyUrl} (User: ${fp.proxyUsername})` : fp.proxyUrl) : 'IP trực tiếp (không dùng proxy)';
+  console.log(`[profile-create] ==========================================`);
+  console.log(`[profile-create] ĐÃ TẠO PROFILE MỚI THÀNH CÔNG:`);
+  console.log(`[profile-create] - ID:         ${profile.id}`);
+  console.log(`[profile-create] - Tên:        ${profile.name}`);
+  if (profile.email) console.log(`[profile-create] - Email:      ${profile.email}`);
+  console.log(`[profile-create] - Seed:       ${fp.seed}`);
+  console.log(`[profile-create] - GPU:        ${gpuLabel}`);
+  console.log(`[profile-create] - IP / Proxy: ${ipProxy}`);
+  console.log(`[profile-create] - Múi giờ:    ${fp.timezone || 'Mặc định'}`);
+  console.log(`[profile-create] - Ngôn ngữ:   ${fp.locale || 'Mặc định'}`);
+  console.log(`[profile-create] - CPU Cores:  ${fp.hardwareConcurrency || 8}`);
+  console.log(`[profile-create] - Cửa sổ:     ${fp.windowSize || '1280x720'}`);
+  console.log(`[profile-create] - Nền tảng:   ${fp.platform || 'windows'}`);
+  console.log(`[profile-create] - WebRTC:     ${fp.webrtc || 'default'}`);
+  console.log(`[profile-create] ==========================================`);
+}, { profileArgument: 0 });
+
 const createProfile = trace.traced('createProfile', async input => {
   const chrome = resolveChromium(settings.chromiumPath);
   if (!chrome.ready) throw new Error(chrome.error);
@@ -36,6 +57,7 @@ const createProfile = trace.traced('createProfile', async input => {
   deleting.add(profile.id);
   try {
     await initializeStartup(profile.id, chrome.path, store.directory(profile.id));
+    logProfileCreated(profile);
     return profile;
   } catch {
     const staged = store.remove(profile.id);
