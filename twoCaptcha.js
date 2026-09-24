@@ -643,7 +643,7 @@ class TwoCaptchaSolver {
       await this.clickCheckbox(evaluate, clickAt);
 
       console.log(`[TwoCaptcha] ⏳ Đang theo dõi phản hồi từ Google (tối đa 3.5s)...`);
-      const freePass = await this.waitForCheckState(evaluate, 3500, 150);
+      const freePass = await this.waitForCheckState(evaluate, 10000, 150);
       if (freePass) {
         console.log(`[TwoCaptcha] 🎉 TUYỆT VỜI: Google đã tự động cấp tích xanh (1-Click Pass)!`);
         console.log(`[TwoCaptcha] 💰 Tiết kiệm thành công 100% chi phí giải 2Captcha!`);
@@ -698,7 +698,7 @@ class TwoCaptchaSolver {
     let autoRedirected = false;
     let challengeClosed = false;
 
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 500; i++) {
       await this._sleep(200);
       const status = await evaluate(`(function() {
         var href = location.href || '';
@@ -713,6 +713,7 @@ class TwoCaptchaSolver {
             if (p.indexOf('/signin/challenge/totp') !== -1) return true;
             if (p.indexOf('/signin/challenge/ipp') !== -1) return true;
             if (p.indexOf('/signin/challenge/iap') !== -1) return true;
+            if (p.indexOf('/signin/challenge/skotp') !== -1) return true;
           } catch(e){}
           return false;
         }
@@ -733,13 +734,13 @@ class TwoCaptchaSolver {
           console.log(`[TwoCaptcha] ✅ Bảng xác minh hình ảnh đã đóng thành công!`);
         } else if (status.bOpen) {
           // Bắn phím Escape để đóng bảng ảnh sau khi đã inject token
-          try {
-            await evaluate(`(function(){
-              var ev = new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true });
-              document.dispatchEvent(ev);
-              window.dispatchEvent(ev);
-            })()`);
-          } catch(e){}
+          // try {
+          //   await evaluate(`(function(){
+          //     var ev = new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true });
+          //     document.dispatchEvent(ev);
+          //     window.dispatchEvent(ev);
+          //   })()`);
+          // } catch(e){}
         }
 
         if (status.isPwdUrl || status.hasPwdField) {
@@ -765,6 +766,7 @@ class TwoCaptchaSolver {
             if (p.indexOf('/signin/challenge/pk') !== -1) return true;
             if (p.indexOf('/signin/challenge/totp') !== -1) return true;
             if (p.indexOf('/signin/challenge/iap') !== -1) return true;
+            if (p.indexOf('/signin/challenge/skotp') !== -1) return true;
           } catch(e){}
           var hasPwdField = !href.includes('challenge/recaptcha') && !!document.querySelector('input[type="password"], input[name="Passwd"]');
           return hasPwdField;

@@ -32,6 +32,8 @@ const classify = t('gmail.classify', value => {
       return 'recaptcha';
     case /\/challenge\/iap/.test(path):
       return 'verify_phone';
+    case /\/challenge\/skotp/.test(path):
+      return 'skotp';
     case /\/identifier|\/ServiceLogin/.test(path):
       return 'email';
     default:
@@ -416,6 +418,151 @@ const stepSelection = t('gmail.stepSelection', async (page, account, options) =>
   await clickAndWaitUrl(page, t('gmail.selectChallenge', () => { assertAccounts(page); return page.click(selector); }), options.timeoutMs);
 });
 
+const clickTryAnotherWay = t('gmail.clickTryAnotherWay', async page => {
+  return await page.evaluate(() => {
+    function fireClick(el) {
+      if (!el) return false;
+      var rect = el.getBoundingClientRect();
+      var clientX = rect.left + rect.width / 2;
+      var clientY = rect.top + rect.height / 2;
+      var opts = { bubbles: true, cancelable: true, composed: true, view: window, clientX: clientX, clientY: clientY };
+      try { el.dispatchEvent(new PointerEvent('pointerdown', opts)); } catch(e){}
+      try { el.dispatchEvent(new MouseEvent('mousedown', opts)); } catch(e){}
+      try { el.dispatchEvent(new PointerEvent('pointerup', opts)); } catch(e){}
+      try { el.dispatchEvent(new MouseEvent('mouseup', opts)); } catch(e){}
+      try { el.click(); } catch(e){}
+      return true;
+    }
+
+    var targets = [
+      'try another way',
+      'thử cách khác',
+      'andere option wählen',
+      'probar otra manera',
+      'essayer une autre méthode'
+    ];
+
+    var candidates = Array.from(document.querySelectorAll('button, [role="button"], [role="link"], li, a, div[jsname], span'));
+    for (var i = 0; i < candidates.length; i++) {
+      var el = candidates[i];
+      if (el.offsetParent === null) continue;
+      var text = (el.innerText || el.textContent || '').trim().toLowerCase();
+      for (var j = 0; j < targets.length; j++) {
+        var t = targets[j];
+        if (text === t || (text.indexOf(t) !== -1 && text.length < 60)) {
+          var parentButton = el.closest('button, [role="button"], li, a');
+          return fireClick(parentButton || el);
+        }
+      }
+    }
+    return false;
+  });
+});
+
+const stepSkotp = t('gmail.stepSkotp', async (page, account, options) => {
+  console.log('[login-trace] 11. Bước SECURITY CODE (challenge/skotp)...');
+  const securityCode = account.securityCode || account.security_code || '';
+
+  if (securityCode) {
+    console.log('[login-trace] 11.x Profile có Security code -> Tiến hành nhập...');
+    await page.evaluate(() => {
+      var targets = ['get a one-time security code', 'nhận mã bảo mật một lần', 'security code', 'mã bảo mật'];
+      var candidates = Array.from(document.querySelectorAll('button, [role="button"], [role="link"], li, a, div[data-challengetype]'));
+      for (var i = 0; i < candidates.length; i++) {
+        var el = candidates[i];
+        if (el.offsetParent === null) continue;
+        var text = (el.innerText || el.textContent || '').trim().toLowerCase();
+        for (var j = 0; j < targets.length; j++) {
+          if (text.indexOf(targets[j]) !== -1) {
+            var clickable = el.closest('button, [role="button"], li, a') || el;
+            clickable.click();
+            return;
+          }
+        }
+      }
+    });
+
+    const inputSelectors = [
+      'input[name="Pin"]',
+      'input[name="pin"]',
+      'input[type="tel"]',
+      'input[id*="Pin"]',
+      'input[id*="pin"]',
+      'input[autocomplete="one-time-code"]',
+      'input[name="totpPin"]',
+      'input[type="text"]'
+    ];
+
+    let foundSel = null;
+    if (typeof page.$ !== 'function') {
+      foundSel = inputSelectors[0];
+    } else {
+      const startWait = Date.now();
+      while (Date.now() - startWait < options.timeoutMs) {
+        for (const sel of inputSelectors) {
+          try {
+            const el = await page.$(sel);
+            if (el && await page.evaluate(node => node.offsetParent !== null && !node.disabled && !node.readOnly, el)) {
+              foundSel = sel;
+              break;
+            }
+          } catch (_) {}
+        }
+        if (foundSel) break;
+        await new Promise(r => setTimeout(r, 200));
+      }
+    }
+
+    if (!foundSel) throw failure('manual', 'Không tìm thấy ô nhập Security code.');
+
+    await typeField(page, foundSel, securityCode, options);
+    console.log('[login-trace] 11.x điền Security code = OK');
+
+    const nextSelectors = [
+      '#idvPreregisteredPhoneNext button',
+      '#idvPreregisteredPhoneNext',
+      '#totpNext button',
+      '#totpNext',
+      '#next button',
+      '#next',
+      'button[type="submit"]',
+    ];
+
+    let nextBtn = null;
+    if (typeof page.$ === 'function') {
+      for (const sel of nextSelectors) {
+        try {
+          const el = await page.$(sel);
+          if (el && await page.evaluate(node => node.offsetParent !== null && !node.disabled, el)) {
+            nextBtn = sel;
+            break;
+          }
+        } catch (_) {}
+      }
+    } else {
+      nextBtn = nextSelectors[0];
+    }
+
+    await clickAndWaitUrl(page, t('gmail.nextSecurityCode', async () => {
+      assertAccounts(page);
+      if (nextBtn) {
+        await page.click(nextBtn);
+      } else {
+        await page.keyboard.press('Enter');
+      }
+    }), options.timeoutMs);
+  } else {
+    console.log('[login-trace] 11.x Profile không có Security code -> Nhấn nút "Try another way"...');
+    await clickAndWaitUrl(page, t('gmail.tryAnotherWay', async () => {
+      assertAccounts(page);
+      const clicked = await clickTryAnotherWay(page);
+      if (!clicked) {
+        throw failure('manual', 'Không tìm thấy nút "Try another way" trên trang.');
+      }
+    }), options.timeoutMs);
+  }
+});
+
 const stepInbox = t('gmail.stepInbox', async (page, account, options) => {
   await page.waitForSelector('[role="main"]', { visible: true, timeout: options.timeoutMs });
   if (classify(page.url()) !== 'inbox') throw failure('manual', 'Cần kiểm tra trang Gmail thủ công.');
@@ -519,6 +666,10 @@ const login = t('gmail.login', async (page, account, onStatus, input = {}) => {
       }
       if (state === 'totp') {
         await stepTotp(page, account, options);
+        continue;
+      }
+      if (state === 'skotp') {
+        await stepSkotp(page, account, options);
         continue;
       }
       throw failure('unknown_state', 'Trạng thái đăng nhập không xác định.');

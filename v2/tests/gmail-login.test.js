@@ -44,6 +44,7 @@ test('Gmail URL classification trusts only HTTPS Google hosts and RFC TOTP is co
   assert.equal(classify('https://accounts.google.com/signin/v2/challenge/kpe'), 'recovery');
   assert.equal(classify('https://accounts.google.com/v3/signin/challenge/recaptcha'), 'recaptcha');
   assert.equal(classify('https://accounts.google.com/v3/signin/challenge/iap'), 'verify_phone');
+  assert.equal(classify('https://accounts.google.com/v3/signin/challenge/skotp'), 'skotp');
   assert.equal(classify('https://mail.google.com.evil.example/mail/u/0/'), 'manual');
   assert.equal(classify('http://accounts.google.com/v3/signin/identifier'), 'manual');
   assert.equal(totp('GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', 59000), '287082');
@@ -59,6 +60,11 @@ const fakePage = t('test.fakePage', (destinations = []) => {
     if (typeof script === 'string' && script.includes('getBoundingClientRect')) {
       return { x: 128, y: 250 };
     }
+    if (typeof script === 'function' && script.toString().includes('try another way')) {
+      const next = destinations.shift();
+      if (next) { page.currentUrl = next; page.emit('framenavigated', page); }
+      return true;
+    }
     return true;
   });
   page.waitForSelector = t('fake.selector', async () => {});
@@ -68,7 +74,7 @@ const fakePage = t('test.fakePage', (destinations = []) => {
   page.mouse = { click: t('fake.mouseClick', async (x, y) => { page.mouseClicked.push({ x, y }); }) };
   page.keyboard = { press: t('fake.press', async () => {}), type: t('fake.type', async (character, options) => { page.typed.push({ character, delay: options.delay }); }) };
   page.click = t('fake.click', async selector => {
-    if (!/^#(?:identifier|password|knowledgePreregisteredEmail|totp|recaptcha)Next/.test(selector) && !selector.includes('recaptchaNext')) return;
+    if (!/^#(?:identifier|password|knowledgePreregisteredEmail|totp|recaptcha|idvPreregisteredPhone|next)Next/.test(selector) && !selector.includes('recaptchaNext') && !selector.includes('Next')) return;
     const next = destinations.shift();
     if (next) { page.currentUrl = next; page.emit('framenavigated', page); }
   });
@@ -211,3 +217,43 @@ test('handles recaptcha challenge by clicking checkbox and solving via twoCaptch
   // Đảm bảo không bấm bất kỳ nút nào ở bước recaptcha
   assert.ok(!clickedSelectors.some(s => s.includes('recaptcha')));
 }));
+
+test('handles skotp challenge by entering security code when available in account', t('test.gmailSkotpWithCode', async () => {
+  const destinations = [
+    'https://accounts.google.com/v3/signin/challenge/pwd',
+    'https://accounts.google.com/v3/signin/challenge/skotp',
+    'https://mail.google.com/mail/u/0/#inbox'
+  ];
+  const page = fakePage(destinations);
+  const states = [];
+  const result = await login(
+    page,
+    { email: 'fake@example.com', password: 'fake-pass', securityCode: '12345678' },
+    t('fake.statusSkotpWithCode', status => states.push(status)),
+    { typingDelayMs: 10, timeoutMs: 100 }
+  );
+  assert.equal(result.status, 'success');
+  assert.deepEqual(states, ['starting', 'email', 'password', 'skotp', 'inbox', 'success']);
+  const allTyped = page.typed.map(t('fake.typedChar', e => e.character)).join('');
+  assert.ok(allTyped.includes('12345678'));
+}));
+
+test('handles skotp challenge by clicking Try another way when account has no security code', t('test.gmailSkotpWithoutCode', async () => {
+  const destinations = [
+    'https://accounts.google.com/v3/signin/challenge/pwd',
+    'https://accounts.google.com/v3/signin/challenge/skotp',
+    'https://accounts.google.com/signin/v2/challenge/totp',
+    'https://mail.google.com/mail/u/0/#inbox'
+  ];
+  const page = fakePage(destinations);
+  const states = [];
+  const result = await login(
+    page,
+    { email: 'fake@example.com', password: 'fake-pass', twofa: 'JBSWY3DPEHPK3PXP' },
+    t('fake.statusSkotpWithoutCode', status => states.push(status)),
+    { typingDelayMs: 10, timeoutMs: 100 }
+  );
+  assert.equal(result.status, 'success');
+  assert.deepEqual(states, ['starting', 'email', 'password', 'skotp', 'totp', 'inbox', 'success']);
+}));
+

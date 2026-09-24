@@ -128,7 +128,9 @@ function accountDetails(id) {
   if (!fs.existsSync(file)) return {};
   try {
     const account = JSON.parse(safeStorage.decryptString(Buffer.from(fs.readFileSync(file, 'utf8'), 'base64')));
-    return Object.fromEntries(['password', 'recoveryMail', 'twofa'].map(key => [key, typeof account[key] === 'string' ? account[key] : '']));
+    const details = Object.fromEntries(['password', 'recoveryMail', 'twofa', 'securityCode'].map(key => [key, typeof account[key] === 'string' ? account[key] : '']));
+    if (!details.securityCode && typeof account.security_code === 'string') details.securityCode = account.security_code;
+    return details;
   } catch { return { accountError: 'Không đọc được thông tin tài khoản mã hóa.' }; }
 }
 
