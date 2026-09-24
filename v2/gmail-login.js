@@ -30,6 +30,8 @@ const classify = t('gmail.classify', value => {
       return 'selection';
     case /\/challenge\/recaptcha/.test(path):
       return 'recaptcha';
+    case /\/challenge\/iap/.test(path):
+      return 'verify_phone';
     case /\/identifier|\/ServiceLogin/.test(path):
       return 'email';
     default:
@@ -456,6 +458,10 @@ const closeRejectedBrowser = t('gmail.closeRejectedBrowser', async page => {
   await page.browser().close();
 });
 
+const closeVerifyPhoneBrowser = t('gmail.closeVerifyPhoneBrowser', async page => {
+  await page.browser().close();
+});
+
 const closeTimedOutBrowser = t('gmail.closeTimedOutBrowser', async page => {
   await page.browser().close();
 });
@@ -472,6 +478,10 @@ const login = t('gmail.login', async (page, account, onStatus, input = {}) => {
       if (state === 'rejected') {
         await closeRejectedBrowser(page);
         throw failure('rejected', 'Google đã từ chối đăng nhập (signin/rejected).');
+      }
+      if (state === 'verify_phone') {
+        await closeVerifyPhoneBrowser(page);
+        throw failure('verify_phone', 'Google yêu cầu xác minh số điện thoại (verify phone).');
       }
       await onStatus(state);
       if (state === 'inbox') {

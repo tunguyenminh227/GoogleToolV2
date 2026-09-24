@@ -712,6 +712,7 @@ class TwoCaptchaSolver {
             if (p.indexOf('/signin/challenge/pk') !== -1) return true;
             if (p.indexOf('/signin/challenge/totp') !== -1) return true;
             if (p.indexOf('/signin/challenge/ipp') !== -1) return true;
+            if (p.indexOf('/signin/challenge/iap') !== -1) return true;
           } catch(e){}
           return false;
         }
@@ -763,6 +764,7 @@ class TwoCaptchaSolver {
             if (p.indexOf('/signin/challenge/pwd') !== -1) return true;
             if (p.indexOf('/signin/challenge/pk') !== -1) return true;
             if (p.indexOf('/signin/challenge/totp') !== -1) return true;
+            if (p.indexOf('/signin/challenge/iap') !== -1) return true;
           } catch(e){}
           var hasPwdField = !href.includes('challenge/recaptcha') && !!document.querySelector('input[type="password"], input[name="Passwd"]');
           return hasPwdField;

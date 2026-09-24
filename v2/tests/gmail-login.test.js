@@ -21,11 +21,29 @@ test('rejected sign-in stops with a safe error after email navigation', t('test.
   assert.equal(page.typed.map(t('fake.typedCharacter', entry => entry.character)).join(''), 'fake@example.com');
 }));
 
+test('verify phone challenge stops with a safe error and closes browser', t('test.gmailVerifyPhone', async () => {
+  const url = 'https://accounts.google.com/v3/signin/challenge/iap?TL=fixture-secret&flowEntry=ServiceLogin';
+  assert.equal(classify(url), 'verify_phone');
+  assert.equal(classify('https://accounts.google.com.evil.example/v3/signin/challenge/iap'), 'manual');
+  const page = fakePage([url]);
+  let closed = 0;
+  page.browser = t('fake.verifyPhoneBrowser', () => ({ close: t('fake.closeVerifyPhone', async () => { closed++; }) }));
+  const states = [];
+  await assert.rejects(login(page, { email: 'fake@example.com', password: 'unused-password' },
+    t('fake.verifyPhoneStatus', state => states.push(state)), { timeoutMs: 100 }), {
+    loginCode: 'verify_phone', message: 'Google yêu cầu xác minh số điện thoại (verify phone).'
+  });
+  assert.deepEqual(states, ['starting', 'email']);
+  assert.equal(closed, 1, 'Close the verify phone profile browser exactly once');
+  assert.equal(page.typed.map(t('fake.typedCharacter', entry => entry.character)).join(''), 'fake@example.com');
+}));
+
 test('Gmail URL classification trusts only HTTPS Google hosts and RFC TOTP is correct', t('test.gmailClassification', () => {
   assert.equal(classify('https://accounts.google.com/v3/signin/challenge/pwd'), 'password');
   assert.equal(classify('https://accounts.google.com/signin/v2/challenge/totp'), 'totp');
   assert.equal(classify('https://accounts.google.com/signin/v2/challenge/kpe'), 'recovery');
   assert.equal(classify('https://accounts.google.com/v3/signin/challenge/recaptcha'), 'recaptcha');
+  assert.equal(classify('https://accounts.google.com/v3/signin/challenge/iap'), 'verify_phone');
   assert.equal(classify('https://mail.google.com.evil.example/mail/u/0/'), 'manual');
   assert.equal(classify('http://accounts.google.com/v3/signin/identifier'), 'manual');
   assert.equal(totp('GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', 59000), '287082');
