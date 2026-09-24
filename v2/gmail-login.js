@@ -410,12 +410,134 @@ const stepTotp = t('gmail.stepTotp', async (page, account, options) => {
   await clickAndWaitUrl(page, t('gmail.next', () => { assertAccounts(page); return page.click(next); }), options.timeoutMs);
 });
 
+const closeSelectionBrowser = t('gmail.closeSelectionBrowser', async page => {
+  if (typeof page.browser === 'function') {
+    await page.browser().close();
+  }
+});
+
 const stepSelection = t('gmail.stepSelection', async (page, account, options) => {
-  console.log('[login-trace] 11. Bước CHỌN PHƯƠNG THỨC XÁC MINH (2FA hoặc Email khôi phục)...');
-  const selector = account.twofa ? '[data-challengetype="6"]' : account.recoveryMail ? '[data-challengetype="12"]' : null;
-  if (!selector) throw failure('missing_data', 'Chưa có dữ liệu cho phương thức xác minh.');
-  await page.waitForSelector(selector, { visible: true, timeout: options.timeoutMs });
-  await clickAndWaitUrl(page, t('gmail.selectChallenge', () => { assertAccounts(page); return page.click(selector); }), options.timeoutMs);
+  console.log('[login-trace] 11. Bước CHỌN PHƯƠNG THỨC XÁC MINH (challenge/selection)...');
+
+  const startWait = Date.now();
+  let authenticatorFound = false;
+
+  while (Date.now() - startWait < Math.min(options.timeoutMs, 10000)) {
+    authenticatorFound = await page.evaluate(() => {
+      var targets = [
+        'get a verification code from the google authenticator app',
+        'google authenticator',
+        'nhận mã xác minh từ ứng dụng google authenticator',
+        'ứng dụng google authenticator'
+      ];
+      var dt = document.querySelector('[data-challengetype="6"]');
+      if (dt && dt.offsetParent !== null) return true;
+
+      var candidates = Array.from(document.querySelectorAll('li, div[role="link"], div[role="button"], button, [data-challengetype]'));
+      for (var i = 0; i < candidates.length; i++) {
+        var el = candidates[i];
+        if (el.offsetParent === null) continue;
+        var text = (el.innerText || el.textContent || '').trim().toLowerCase();
+        for (var j = 0; j < targets.length; j++) {
+          if (text.includes(targets[j])) return true;
+        }
+      }
+      return false;
+    });
+
+    if (authenticatorFound) break;
+    if (options.timeoutMs <= 500) break;
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  if (!authenticatorFound) {
+    console.warn('[login-trace] 11.x Không tìm thấy dòng "Get a verification code from the Google Authenticator app" -> Đóng trình duyệt và báo lỗi.');
+    await closeSelectionBrowser(page);
+    throw failure('no_authenticator', 'Không có tùy chọn Google Authenticator trong danh sách xác minh; đã đóng trình duyệt.');
+  }
+
+  console.log('[login-trace] 11.x Đã tìm thấy tùy chọn Google Authenticator -> Tiến hành chọn...');
+  await clickAndWaitUrl(page, t('gmail.selectAuthenticator', async () => {
+    assertAccounts(page);
+
+    if (typeof page.evaluateHandle === 'function') {
+      try {
+        const handle = await page.evaluateHandle(() => {
+          var targets = [
+            'get a verification code from the google authenticator app',
+            'google authenticator',
+            'nhận mã xác minh từ ứng dụng google authenticator',
+            'ứng dụng google authenticator'
+          ];
+          var dt = document.querySelector('[data-challengetype="6"]');
+          if (dt && dt.offsetParent !== null) return dt;
+
+          var candidates = Array.from(document.querySelectorAll('li, div[role="link"], div[role="button"], button, [data-challengetype]'));
+          for (var i = 0; i < candidates.length; i++) {
+            var el = candidates[i];
+            if (el.offsetParent === null) continue;
+            var text = (el.innerText || el.textContent || '').trim().toLowerCase();
+            for (var j = 0; j < targets.length; j++) {
+              if (text.includes(targets[j])) {
+                return el.closest('li, div[role="link"], div[role="button"], button') || el;
+              }
+            }
+          }
+          return null;
+        });
+
+        const el = handle.asElement();
+        if (el) {
+          const rect = await page.evaluate(node => {
+            node.scrollIntoView({ block: 'center', inline: 'center' });
+            var r = node.getBoundingClientRect();
+            return { x: r.left + r.width / 2, y: r.top + r.height / 2, width: r.width, height: r.height };
+          }, el);
+
+          if (rect.width > 0 && rect.height > 0 && page.mouse && typeof page.mouse.click === 'function') {
+            await page.mouse.move(rect.x, rect.y);
+            await new Promise(r => setTimeout(r, 80));
+            await page.mouse.click(rect.x, rect.y, { delay: 80 });
+          }
+
+          try { await el.click(); } catch (_) {}
+          await page.evaluate(node => { try { node.click(); } catch(e){} }, el);
+          return;
+        }
+      } catch (_) {}
+    }
+
+    const clicked = await page.evaluate(() => {
+      var targets = [
+        'get a verification code from the google authenticator app',
+        'google authenticator',
+        'nhận mã xác minh từ ứng dụng google authenticator',
+        'ứng dụng google authenticator'
+      ];
+      var dt = document.querySelector('[data-challengetype="6"]');
+      if (dt && dt.offsetParent !== null) {
+        dt.click();
+        return true;
+      }
+      var candidates = Array.from(document.querySelectorAll('li, div[role="link"], div[role="button"], button, [data-challengetype]'));
+      for (var i = 0; i < candidates.length; i++) {
+        var el = candidates[i];
+        if (el.offsetParent === null) continue;
+        var text = (el.innerText || el.textContent || '').trim().toLowerCase();
+        for (var j = 0; j < targets.length; j++) {
+          if (text.includes(targets[j])) {
+            el.click();
+            return true;
+          }
+        }
+      }
+      return false;
+    });
+
+    if (!clicked && typeof page.click === 'function') {
+      await page.click('[data-challengetype="6"]');
+    }
+  }), options.timeoutMs);
 });
 
 const clickTryAnotherWay = t('gmail.clickTryAnotherWay', async (page, timeoutMs = 10000) => {

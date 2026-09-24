@@ -65,6 +65,11 @@ const fakePage = t('test.fakePage', (destinations = []) => {
       if (next) { page.currentUrl = next; page.emit('framenavigated', page); }
       return true;
     }
+    if (typeof script === 'function' && script.toString().includes('google authenticator') && script.toString().includes('el.click')) {
+      const next = destinations.shift();
+      if (next) { page.currentUrl = next; page.emit('framenavigated', page); }
+      return true;
+    }
     return true;
   });
   page.waitForSelector = t('fake.selector', async () => {});
@@ -74,7 +79,7 @@ const fakePage = t('test.fakePage', (destinations = []) => {
   page.mouse = { click: t('fake.mouseClick', async (x, y) => { page.mouseClicked.push({ x, y }); }) };
   page.keyboard = { press: t('fake.press', async () => {}), type: t('fake.type', async (character, options) => { page.typed.push({ character, delay: options.delay }); }) };
   page.click = t('fake.click', async selector => {
-    if (!/^#(?:identifier|password|knowledgePreregisteredEmail|totp|recaptcha|idvPreregisteredPhone|next)Next/.test(selector) && !selector.includes('recaptchaNext') && !selector.includes('Next')) return;
+    if (!/^#(?:identifier|password|knowledgePreregisteredEmail|totp|recaptcha|idvPreregisteredPhone|next)Next/.test(selector) && !selector.includes('recaptchaNext') && !selector.includes('Next') && !selector.includes('data-challengetype')) return;
     const next = destinations.shift();
     if (next) { page.currentUrl = next; page.emit('framenavigated', page); }
   });
@@ -256,4 +261,52 @@ test('handles skotp challenge by clicking Try another way when account has no se
   assert.equal(result.status, 'success');
   assert.deepEqual(states, ['starting', 'email', 'password', 'skotp', 'totp', 'inbox', 'success']);
 }));
+
+test('handles selection challenge by selecting Google Authenticator when present', t('test.gmailSelectionWithTotp', async () => {
+  const destinations = [
+    'https://accounts.google.com/v3/signin/challenge/pwd',
+    'https://accounts.google.com/v3/signin/challenge/selection',
+    'https://accounts.google.com/signin/v2/challenge/totp',
+    'https://mail.google.com/mail/u/0/#inbox'
+  ];
+  const page = fakePage(destinations);
+  const states = [];
+  const result = await login(
+    page,
+    { email: 'fake@example.com', password: 'fake-pass', twofa: 'JBSWY3DPEHPK3PXP' },
+    t('fake.statusSelectionWithTotp', status => states.push(status)),
+    { typingDelayMs: 10, timeoutMs: 100 }
+  );
+  assert.equal(result.status, 'success');
+  assert.deepEqual(states, ['starting', 'email', 'password', 'selection', 'totp', 'inbox', 'success']);
+}));
+
+test('handles selection challenge by closing browser when Google Authenticator is missing', t('test.gmailSelectionWithoutTotp', async () => {
+  const destinations = [
+    'https://accounts.google.com/v3/signin/challenge/pwd',
+    'https://accounts.google.com/v3/signin/challenge/selection',
+  ];
+  const page = fakePage(destinations);
+  let closed = 0;
+  page.browser = t('fake.selectionBrowser', () => ({ close: t('fake.closeSelection', async () => { closed++; }) }));
+  // Override page.evaluate to simulate Authenticator not present
+  page.evaluate = t('fake.evalNoAuth', async script => {
+    if (typeof script === 'function' && script.toString().includes('google authenticator')) {
+      return false;
+    }
+    return true;
+  });
+  const states = [];
+  await assert.rejects(
+    login(
+      page,
+      { email: 'fake@example.com', password: 'fake-pass', twofa: 'JBSWY3DPEHPK3PXP' },
+      t('fake.statusSelectionWithoutTotp', status => states.push(status)),
+      { typingDelayMs: 10, timeoutMs: 100 }
+    ),
+    { loginCode: 'no_authenticator' }
+  );
+  assert.equal(closed, 1, 'Browser must be closed when Google Authenticator option is missing');
+}));
+
 
