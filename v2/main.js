@@ -372,6 +372,7 @@ else {
       handle('v2:open-cancel', openQueue.cancel);
       handle('v2:open-limit', openQueue.setLimit);
       handle('v2:login-gmail', loginProfile);
+      handle('v2:get-totp', secret => gmailLogin.totp(secret));
       handle('v2:check-iphey', id => openProfile(id, 'https://iphey.com/'));
       handle('v2:choose-chrome', async () => {
         const result = await dialog.showOpenDialog(window, { title: `Chọn ${engine.label} (chrome.exe)`, properties: ['openFile'], filters: [{ name: 'Chromium', extensions: ['exe'] }] });

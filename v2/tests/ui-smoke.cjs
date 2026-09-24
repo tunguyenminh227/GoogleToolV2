@@ -94,7 +94,7 @@ app.whenReady().then(async () => {
       }
       check(document.querySelector('.panel-heading h2').textContent === 'Profiles', 'Minimal header');
       check(!document.querySelector('.selection-toolbar, .tabs, .action-heading, .delete-button, #templateButton'), 'Removed header controls and actions');
-      check(document.querySelectorAll('#profileTable th').length === 12, 'Table without action column');
+      check(document.querySelectorAll('#profileTable th').length === 13, 'Table without action column');
       document.getElementById('selectAll').click();
       check(document.querySelectorAll('#profileRows input[type=checkbox]:checked').length === 4, 'Select visible profiles');
       check(!document.getElementById('profileActions').hidden, 'Selection shows Actions and Run');
@@ -128,6 +128,12 @@ app.whenReady().then(async () => {
       check(bounds.right <= innerWidth && bounds.bottom <= innerHeight, 'Context menu stays in viewport');
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
       check(contextMenu.hidden, 'Escape closes context menu');
+      row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 200, clientY: 200 }));
+      check(document.querySelector('[data-copy="all"]'), 'Copy data button exists in context menu');
+      check(document.querySelectorAll('.submenu-options [data-copy]').length === 7, 'Copy submenu has 7 options');
+      check(document.querySelector('[data-copy="twofa-code"]'), '2FA Code option exists');
+      document.querySelector('[data-copy="email"]').click();
+      check(contextMenu.hidden, 'Clicking copy item closes menu');
       row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 300, clientY: 300 }));
       document.querySelector('[data-action="delete"]').click();
       await waitFor(() => !document.getElementById('actionButton').disabled);

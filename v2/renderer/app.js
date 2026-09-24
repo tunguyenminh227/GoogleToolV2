@@ -39,17 +39,159 @@ const updateSelection = window.uiTrace('renderer.updateSelection', function () {
   $('selectAll').indeterminate = count > 0 && count < visibleIds.length;
 });
 function closeActionMenu() {
-  $('actionOptions').hidden = true;
-  $('actionOptions').classList.remove('context-actions');
-  $('actionOptions').style.removeProperty('left');
-  $('actionOptions').style.removeProperty('top');
+  const menu = $('actionOptions');
+  menu.hidden = true;
+  menu.classList.remove('context-actions');
+  menu.style.removeProperty('left');
+  menu.style.removeProperty('top');
+  const submenu = menu.querySelector('.submenu-options');
+  if (submenu) submenu.classList.remove('open-left');
   $('actionButton').setAttribute('aria-expanded', 'false');
 }
+
+function adjustSubmenuPosition() {
+  const menu = $('actionOptions');
+  const submenu = menu.querySelector('.submenu-options');
+  if (!submenu) return;
+  const menuRect = menu.getBoundingClientRect();
+  const submenuWidth = 185;
+  if (menuRect.right + submenuWidth + 10 > window.innerWidth) {
+    submenu.classList.add('open-left');
+  } else {
+    submenu.classList.remove('open-left');
+  }
+}
+
+const copyTextToClipboard = async text => {
+  try {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch (_) {}
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    ta.style.top = '-9999px';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand('copy');
+    ta.remove();
+    return ok;
+  } catch (_) {
+    return false;
+  }
+};
+
+const getTotpCode = async secret => {
+  if (!secret) return '';
+  try {
+    if (window.googleTool && typeof window.googleTool.getTotp === 'function') {
+      const code = await window.googleTool.getTotp(secret);
+      if (code) return code;
+    }
+  } catch (_) {}
+  try {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    const normalized = String(secret || '').replace(/\s+/g, '').replace(/=+$/, '').toUpperCase();
+    if (!/^[A-Z2-7]{16,}$/.test(normalized)) return '';
+    let bits = 0, buffer = 0;
+    const bytes = [];
+    for (const char of normalized) {
+      buffer = (buffer << 5) | alphabet.indexOf(char); bits += 5;
+      if (bits >= 8) { bits -= 8; bytes.push((buffer >>> bits) & 255); }
+    }
+    const keyData = new Uint8Array(bytes);
+    const cryptoKey = await window.crypto.subtle.importKey(
+      'raw', keyData, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']
+    );
+    const counter = Math.floor(Date.now() / 30000);
+    const counterBytes = new Uint8Array(8);
+    let temp = counter;
+    for (let i = 7; i >= 0; i--) {
+      counterBytes[i] = temp & 0xff;
+      temp = Math.floor(temp / 256);
+    }
+    const sig = await window.crypto.subtle.sign('HMAC', cryptoKey, counterBytes);
+    const sigBytes = new Uint8Array(sig);
+    const offset = sigBytes[19] & 0x0f;
+    const code = ((sigBytes[offset] & 0x7f) << 24) |
+                 ((sigBytes[offset + 1] & 0xff) << 16) |
+                 ((sigBytes[offset + 2] & 0xff) << 8) |
+                 (sigBytes[offset + 3] & 0xff);
+    return String(code % 1000000).padStart(6, '0');
+  } catch (_) {
+    return '';
+  }
+};
+
+const copyProfileData = window.uiTrace('renderer.copyData', async fieldsToCopy => {
+  if (!selected.size) return;
+  const ids = visibleIds.filter(id => selected.has(id));
+  if (!ids.length) return;
+
+  const lines = [];
+  for (const id of ids) {
+    const p = state.profiles.find(item => item.id === id);
+    if (!p) continue;
+    if (fieldsToCopy === 'all') {
+      const parts = [
+        p.email || '',
+        p.password || '',
+        p.recoveryMail || '',
+        p.twofa || '',
+      ];
+      if (p.securityCode) parts.push(p.securityCode);
+      lines.push(parts.join('|'));
+    } else if (fieldsToCopy === 'email') {
+      lines.push(p.email || '');
+    } else if (fieldsToCopy === 'password') {
+      lines.push(p.password || '');
+    } else if (fieldsToCopy === 'twofa-code') {
+      const code = await getTotpCode(p.twofa);
+      lines.push(code);
+    } else if (fieldsToCopy === 'twofa') {
+      lines.push(p.twofa || '');
+    } else if (fieldsToCopy === 'recoveryMail') {
+      lines.push(p.recoveryMail || '');
+    } else if (fieldsToCopy === 'securityCode') {
+      lines.push(p.securityCode || '');
+    }
+  }
+
+  if (fieldsToCopy === 'twofa-code' && lines.every(c => !c)) {
+    toast('Profile chưa có khóa 2FA để tạo mã.', true);
+    return;
+  }
+
+  const textToCopy = lines.join('\n');
+  const ok = await copyTextToClipboard(textToCopy);
+  if (ok) {
+    const labels = {
+      all: 'tất cả dữ liệu',
+      email: 'Email',
+      password: 'Mật khẩu',
+      'twofa-code': '2FA Code',
+      twofa: '2FA Key',
+      recoveryMail: 'Email khôi phục',
+      securityCode: 'Security code'
+    };
+    const label = labels[fieldsToCopy] || 'dữ liệu';
+    toast(`Đã sao chép ${label} (${lines.length} profile).`);
+  } else {
+    toast('Không thể sao chép vào clipboard.', true);
+  }
+});
+
 $('actionButton').addEventListener('click', () => {
   const wasOpen = !$('actionOptions').hidden;
   closeActionMenu();
   $('actionOptions').hidden = wasOpen;
   $('actionButton').setAttribute('aria-expanded', String(!$('actionOptions').hidden));
+  if (!$('actionOptions').hidden) adjustSubmenuPosition();
 });
 document.querySelectorAll('[data-action]').forEach(button => button.addEventListener('click', () => {
   if (actionBusy) return;
@@ -58,6 +200,12 @@ document.querySelectorAll('[data-action]').forEach(button => button.addEventList
   $('actionButton').textContent = `${button.textContent} ▾`;
   closeActionMenu(); updateSelection(); $('actionButton').focus();
   if (runImmediately) $('runAction').click();
+}));
+document.querySelectorAll('[data-copy]').forEach(button => button.addEventListener('click', async event => {
+  event.stopPropagation();
+  const copyType = button.dataset.copy || 'all';
+  closeActionMenu();
+  await copyProfileData(copyType);
 }));
 document.addEventListener('click', event => { if (!event.target.closest('.action-picker')) closeActionMenu(); });
 document.addEventListener('keydown', event => { if (event.key === 'Escape' && !$('actionOptions').hidden) { closeActionMenu(); $('actionButton').focus(); } });
@@ -182,6 +330,7 @@ const render = window.uiTrace('renderer.render', function (data = state) {
       menu.style.left = `${Math.max(8, Math.min(event.clientX, innerWidth - menu.offsetWidth - 8))}px`;
       menu.style.top = `${Math.max(8, Math.min(event.clientY, innerHeight - menu.offsetHeight - 8))}px`;
       $('actionButton').setAttribute('aria-expanded', 'true');
+      adjustSubmenuPosition();
       menu.querySelector('button').focus({ preventScroll: true });
     });
     row.classList.toggle('selected-row', selected.has(p.id));

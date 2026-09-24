@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld('googleTool', {
   cancelOpenQueue: () => invoke('v2:open-cancel'),
   setOpenLimit: limit => invoke('v2:open-limit', limit),
   loginGmail: id => invoke('v2:login-gmail', id),
+  getTotp: secret => invoke('v2:get-totp', secret),
   checkIphey: id => invoke('v2:check-iphey', id),
   chooseChrome: () => invoke('v2:choose-chrome'),
   onChanged: callback => {
