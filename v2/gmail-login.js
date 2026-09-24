@@ -419,6 +419,7 @@ const stepSelection = t('gmail.stepSelection', async (page, account, options) =>
 });
 
 const clickTryAnotherWay = t('gmail.clickTryAnotherWay', async (page, timeoutMs = 10000) => {
+  console.log('[login-trace] 11.x Bắt đầu tìm nút "Try another way"... URL hiện tại:', page.url());
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     if (typeof page.evaluateHandle === 'function') {
@@ -431,44 +432,76 @@ const clickTryAnotherWay = t('gmail.clickTryAnotherWay', async (page, timeoutMs 
             'probar otra manera',
             'essayer une autre méthode'
           ];
-          var candidates = Array.from(document.querySelectorAll('button, [role="button"], [role="link"], li, a, div[jsname], span'));
-          for (var i = 0; i < candidates.length; i++) {
-            var el = candidates[i];
-            if (el.offsetParent === null) continue;
-            var text = (el.innerText || el.textContent || '').trim().toLowerCase();
-            for (var j = 0; j < targets.length; j++) {
-              var t = targets[j];
-              if (text === t || (text.indexOf(t) !== -1 && text.length < 60)) {
-                return el.closest('button, [role="button"], li, a') || el;
+
+          // Priority 1: Direct button, [role="button"], or a
+          var buttons = Array.from(document.querySelectorAll('button, [role="button"], a'));
+          for (var i = 0; i < buttons.length; i++) {
+            var b = buttons[i];
+            if (b.offsetParent === null) continue;
+            var bText = (b.innerText || b.textContent || '').trim().toLowerCase();
+            for (var t = 0; t < targets.length; t++) {
+              if (bText === targets[t] || (bText.indexOf(targets[t]) !== -1 && bText.length < 50)) {
+                return b;
+              }
+            }
+          }
+
+          // Priority 2: Leaf span/div text whose closest ancestor is a button/link
+          var leaves = Array.from(document.querySelectorAll('span, div[jsname], p'));
+          for (var j = 0; j < leaves.length; j++) {
+            var l = leaves[j];
+            if (l.offsetParent === null) continue;
+            if (l.querySelector('button, [role="button"], a')) continue;
+            var lText = (l.innerText || l.textContent || '').trim().toLowerCase();
+            for (var k = 0; k < targets.length; k++) {
+              if (lText === targets[k] || (lText.indexOf(targets[k]) !== -1 && lText.length < 50)) {
+                var parentBtn = l.closest('button, [role="button"], a');
+                return parentBtn || l;
               }
             }
           }
           return null;
         });
+
         const el = handle.asElement();
         if (el) {
-          console.log('[login-trace] 11.x Tìm thấy nút "Try another way" (ElementHandle), đang click...');
-          await el.click();
+          const info = await page.evaluate(node => {
+            node.scrollIntoView({ block: 'center', inline: 'center' });
+            var r = node.getBoundingClientRect();
+            return {
+              tag: node.tagName,
+              text: (node.innerText || node.textContent || '').trim(),
+              cls: node.className,
+              rect: { x: r.left + r.width / 2, y: r.top + r.height / 2, width: r.width, height: r.height }
+            };
+          }, el);
+
+          console.log(`[login-trace] 11.x Tìm thấy nút "Try another way": <${info.tag}> text="${info.text}" rect=(${Math.round(info.rect.x)}, ${Math.round(info.rect.y)})`);
+
+          if (info.rect.width > 0 && info.rect.height > 0 && page.mouse && typeof page.mouse.click === 'function') {
+            console.log(`[login-trace] 11.x Di chuyển chuột và click toạ độ (${Math.round(info.rect.x)}, ${Math.round(info.rect.y)})...`);
+            await page.mouse.move(info.rect.x, info.rect.y);
+            await new Promise(r => setTimeout(r, 100));
+            await page.mouse.click(info.rect.x, info.rect.y, { delay: 100 });
+          }
+
+          try {
+            await el.click();
+          } catch (_) {}
+
+          await page.evaluate(node => {
+            try { node.click(); } catch(e){}
+          }, el);
+
+          console.log('[login-trace] 11.x Đã thực hiện click "Try another way" thành công!');
           return true;
         }
-      } catch (_) {}
+      } catch (err) {
+        console.warn('[login-trace] 11.x Lỗi khi tìm/click qua handle:', err.message);
+      }
     }
 
-    const clicked = await page.evaluate(() => {
-      function fireClick(el) {
-        if (!el) return false;
-        var rect = el.getBoundingClientRect();
-        var clientX = rect.left + rect.width / 2;
-        var clientY = rect.top + rect.height / 2;
-        var opts = { bubbles: true, cancelable: true, composed: true, view: window, clientX: clientX, clientY: clientY };
-        try { el.dispatchEvent(new PointerEvent('pointerdown', opts)); } catch(e){}
-        try { el.dispatchEvent(new MouseEvent('mousedown', opts)); } catch(e){}
-        try { el.dispatchEvent(new PointerEvent('pointerup', opts)); } catch(e){}
-        try { el.dispatchEvent(new MouseEvent('mouseup', opts)); } catch(e){}
-        try { el.click(); } catch(e){}
-        return true;
-      }
-
+    const fallbackClicked = await page.evaluate(() => {
       var targets = [
         'try another way',
         'thử cách khác',
@@ -476,30 +509,40 @@ const clickTryAnotherWay = t('gmail.clickTryAnotherWay', async (page, timeoutMs 
         'probar otra manera',
         'essayer une autre méthode'
       ];
-
-      var candidates = Array.from(document.querySelectorAll('button, [role="button"], [role="link"], li, a, div[jsname], span'));
-      for (var i = 0; i < candidates.length; i++) {
-        var el = candidates[i];
-        if (el.offsetParent === null) continue;
-        var text = (el.innerText || el.textContent || '').trim().toLowerCase();
-        for (var j = 0; j < targets.length; j++) {
-          var t = targets[j];
-          if (text === t || (text.indexOf(t) !== -1 && text.length < 60)) {
-            var parentButton = el.closest('button, [role="button"], li, a');
-            return fireClick(parentButton || el);
+      var buttons = Array.from(document.querySelectorAll('button, [role="button"], a'));
+      for (var i = 0; i < buttons.length; i++) {
+        var b = buttons[i];
+        if (b.offsetParent === null) continue;
+        var bText = (b.innerText || b.textContent || '').trim().toLowerCase();
+        for (var t = 0; t < targets.length; t++) {
+          if (bText === targets[t] || (bText.indexOf(targets[t]) !== -1 && bText.length < 50)) {
+            b.click();
+            return true;
           }
         }
       }
       return false;
     });
 
-    if (clicked) {
-      console.log('[login-trace] 11.x Đã click nút "Try another way" qua page.evaluate.');
+    if (fallbackClicked) {
+      console.log('[login-trace] 11.x Đã click nút qua evaluate fallback.');
       return true;
     }
+
     if (timeoutMs <= 500) break;
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise(r => setTimeout(r, 500));
   }
+
+  try {
+    const pageDump = await page.evaluate(() => {
+      var allButtons = Array.from(document.querySelectorAll('button, [role="button"], a')).map(function(el) {
+        return { tag: el.tagName, text: (el.innerText || el.textContent || '').trim(), cls: el.className };
+      });
+      return { url: window.location.href, buttons: allButtons };
+    });
+    console.warn('[login-trace] 11.x Không tìm thấy nút "Try another way". DOM buttons:', JSON.stringify(pageDump));
+  } catch (_) {}
+
   return false;
 });
 
