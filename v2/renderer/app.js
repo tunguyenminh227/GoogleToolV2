@@ -283,6 +283,24 @@ function element(tag, className, text) {
   return node;
 }
 
+const mailLabels = {
+  starting: 'Đang mở…',
+  email: 'Nhập email…',
+  password: 'Nhập mật khẩu…',
+  password_reached: 'Chờ mật khẩu',
+  recovery: 'Email khôi phục…',
+  totp: 'Authenticator…',
+  selection: 'Chọn xác minh…',
+  skotp: 'Security Code…',
+  verify_phone: 'Xác minh SĐT',
+  rejected: 'Bị từ chối',
+  inbox: 'Đang vào Gmail…',
+  success: 'Đã đăng nhập',
+  manual: 'Cần xử lý',
+  error: 'Lỗi đăng nhập',
+  recaptcha: 'Giải reCAPTCHA…'
+};
+
 const render = window.uiTrace('renderer.render', function (data = state) {
   state = data;
   const engineLabel = state.engineLabel || 'Chromium';
@@ -295,7 +313,7 @@ const render = window.uiTrace('renderer.render', function (data = state) {
   $('chromeDot').classList.toggle('ready', Boolean(state.chromePath));
   const query = $('search').value.trim().toLocaleLowerCase('vi');
   const visible = profiles.filter(p =>
-    [p.name, p.email, p.recoveryMail, p.notes, p.notes2].some(value => String(value || '').toLocaleLowerCase('vi').includes(query))).slice();
+    [p.name, p.email, p.recoveryMail, p.notes, p.notes2, p.mailError, mailLabels[p.mailStatus]].some(value => String(value || '').toLocaleLowerCase('vi').includes(query))).slice();
   const order = new Map(profiles.map((p, index) => [p.id, index + 1]));
   visible.sort((a, b) => {
     const value = p => sortKey === 'stt' ? order.get(p.id) : sortKey === 'updatedAt' ? p.updatedAt || p.lastOpenedAt || p.createdAt : p[sortKey] || '';
@@ -347,9 +365,13 @@ const render = window.uiTrace('renderer.render', function (data = state) {
     status.title = p.running ? 'Đang mở' : 'Chưa mở';
     status.setAttribute('aria-label', status.title);
     email.textContent = p.email || p.name;
-    const mailLabels = { starting: 'Đang mở…', email: 'Nhập email…', password: 'Nhập mật khẩu…', recovery: 'Email khôi phục…', totp: 'Authenticator…', selection: 'Chọn xác minh…', skotp: 'Security Code…', verify_phone: 'Xác minh SĐT…', rejected: 'Bị từ chối', inbox: 'Đang vào Gmail…', success: 'Đã đăng nhập', manual: 'Cần xử lý', error: 'Lỗi đăng nhập', recaptcha: 'Giải reCAPTCHA…' };
-    const mailStatus = element('td', 'mail-status', mailLabels[p.mailStatus] || '—');
-    mailStatus.title = mailLabels[p.mailStatus] || 'Chưa kiểm tra đăng nhập Gmail';
+    const isError = Boolean(p.mailError) || ['error', 'rejected', 'verify_phone'].includes(p.mailStatus);
+    const isSuccess = p.mailStatus === 'success';
+    const isProgress = ['starting', 'email', 'password', 'recovery', 'totp', 'selection', 'skotp', 'recaptcha', 'inbox'].includes(p.mailStatus);
+    const statusClass = isError ? ' status-error' : (isSuccess ? ' status-success' : (isProgress ? ' status-progress' : ''));
+    const displayText = p.mailError || mailLabels[p.mailStatus] || '—';
+    const mailStatus = element('td', `mail-status${statusClass}`, displayText);
+    mailStatus.title = p.mailError ? `Lỗi: ${p.mailError}` : (mailLabels[p.mailStatus] || 'Chưa kiểm tra đăng nhập Gmail');
     const accountCell = (key, secret = false) => {
       const td = element('td', 'account-cell');
       if (p.accountError) { td.textContent = 'Lỗi đọc'; td.title = p.accountError; return td; }

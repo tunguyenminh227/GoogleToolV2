@@ -114,11 +114,27 @@ class ProfileStore {
     this.save(this.profiles.map(p => p.id === id ? { ...p, lastOpenedAt: new Date().toISOString() } : p));
   }
 
-  setMailStatus = trace.traced('store.setMailStatus', (id, mailStatus) => {
+  setMailStatus = trace.traced('store.setMailStatus', (id, mailStatus, mailError = null) => {
     this.get(id);
     const allowed = ['starting', 'email', 'password', 'password_reached', 'recovery', 'totp', 'selection', 'inbox', 'success', 'manual', 'error', 'recaptcha', 'skotp', 'verify_phone', 'rejected'];
     if (!allowed.includes(mailStatus)) throw new Error('Trạng thái Gmail không hợp lệ.');
-    this.save(this.profiles.map(trace.traced('store.mailStatusRow', p => p.id === id ? { ...p, mailStatus, updatedAt: new Date().toISOString() } : p)));
+    const errorString = typeof mailError === 'string' && mailError.trim()
+      ? mailError.trim().slice(0, 500)
+      : (mailError instanceof Error ? (mailError.message || '').trim().slice(0, 500) : null);
+    this.save(this.profiles.map(trace.traced('store.mailStatusRow', p => {
+      if (p.id !== id) return p;
+      let nextError = null;
+      if (errorString) {
+        nextError = errorString;
+      } else if (mailStatus === 'rejected') {
+        nextError = 'Google đã từ chối đăng nhập (signin/rejected)';
+      } else if (mailStatus === 'verify_phone') {
+        nextError = 'Google yêu cầu xác minh số điện thoại (verify phone)';
+      } else if (['error', 'manual'].includes(mailStatus)) {
+        nextError = p.mailError || (mailStatus === 'manual' ? 'Cần thao tác thủ công' : 'Lỗi đăng nhập');
+      }
+      return { ...p, mailStatus, mailError: nextError, updatedAt: new Date().toISOString() };
+    })));
   }, { profileArgument: 0 });
 
   updateNotes(id, input) {

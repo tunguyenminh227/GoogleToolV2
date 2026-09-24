@@ -185,11 +185,17 @@ const loginProfile = trace.traced('loginProfile', async id => {
   if (details.accountError) throw new Error(details.accountError);
   deleting.add(id);
   let browser;
-  const status = trace.traced('gmail.status', value => { store.setMailStatus(id, value); broadcast(); });
+  const status = trace.traced('gmail.status', (value, errorText = null) => { store.setMailStatus(id, value, errorText); broadcast(); });
   try {
-    if (await profileIsOpen(id)) throw new Error('Đóng profile trước khi chọn Login gmail để app mở phiên đăng nhập.');
+    if (await profileIsOpen(id)) {
+      status('error', 'Profile đang mở');
+      throw new Error('Đóng profile trước khi chọn Login gmail để app mở phiên đăng nhập.');
+    }
     const chrome = resolveChromium(settings.chromiumPath);
-    if (!chrome.ready) throw new Error(chrome.error);
+    if (!chrome.ready) {
+      status('error', chrome.error || 'Chromium chưa sẵn sàng');
+      throw new Error(chrome.error);
+    }
     status('starting');
     let args = launchArgs(store.directory(id), null, profile.fingerprint);
     args = tiledArgs(id, args);
@@ -198,7 +204,11 @@ const loginProfile = trace.traced('loginProfile', async id => {
       browser = await puppeteer.launch({ executablePath: chrome.path, args, ignoreDefaultArgs: true,
         headless: false, pipe: true, defaultViewport: null, timeout: 30000,
         handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false });
-    } catch { windowSlots.delete(id); await closeProxy(id); throw new Error('Không kết nối được Chromium để đăng nhập Gmail.'); }
+    } catch {
+      windowSlots.delete(id); await closeProxy(id);
+      status('error', 'Không kết nối được Chromium');
+      throw new Error('Không kết nối được Chromium để đăng nhập Gmail.');
+    }
     const child = browser.process();
     running.set(id, child);
     child.once('exit', trace.traced('gmail.browserExit', () => {
@@ -218,13 +228,20 @@ const loginProfile = trace.traced('loginProfile', async id => {
       const target = await browser.waitForTarget(trace.traced('gmail.waitExistingTab', target => target.type() === 'page'), { timeout: 30000 });
       page = await target.page();
     }
-    if (!page) throw new Error('Không tìm thấy tab hiện tại của profile.');
+    if (!page) {
+      status('error', 'Không tìm thấy tab profile');
+      throw new Error('Không tìm thấy tab hiện tại của profile.');
+    }
     await page.bringToFront();
     return await gmailLogin.login(page, { ...details, email: profile.email }, status,
       { typingDelayMs: settings.gmailTypingDelayMs ?? 90, timeoutMs: settings.gmailStepTimeoutMs ?? 30000,
         twoCaptchaApiKey: settings.twoCaptchaApiKey });
   } catch (error) {
-    status(error.loginCode === 'manual' || error.loginCode === 'missing_data' || error.loginCode === 'missing_totp' ? 'manual' : 'error');
+    const errorMsg = error.message || 'Lỗi đăng nhập';
+    const statusCode = error.loginCode === 'rejected' ? 'rejected' :
+      error.loginCode === 'verify_phone' ? 'verify_phone' :
+      error.loginCode === 'manual' || error.loginCode === 'missing_data' || error.loginCode === 'missing_totp' ? 'manual' : 'error';
+    status(statusCode, errorMsg);
     throw new Error(error.loginCode ? error.message : 'Không thể bắt đầu Login gmail. Hãy đóng profile đang mở và kiểm tra cấu hình trình duyệt.');
   } finally {
     try { if (browser) browser.disconnect(); }

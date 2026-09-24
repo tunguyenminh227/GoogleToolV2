@@ -88,8 +88,14 @@ main{height:100dvh;min-width:0;display:flex;flex-direction:column}
 #threadLimit{width:65px;margin-left:6px;padding:7px;border:1px solid #d4dce8;border-radius:5px}
 #openQueueStatus{overflow-wrap:anywhere}
 
+#profileTable th:nth-child(4){width:11%}
 #profileTable th:nth-child(9){width:8%}
 #profileTable th:nth-child(5){width:12%}
 #profileTable th:nth-child(7){width:10%}
 #profileTable th:nth-child(11),#profileTable th:nth-child(12){width:6%}
-#profileTable{min-width:1360px}
+#profileTable{min-width:1380px}
+
+.mail-status{max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mail-status.status-error{color:#d93025;font-weight:600}
+.mail-status.status-success{color:#188038;font-weight:600}
+.mail-status.status-progress{color:#1a73e8;font-weight:500}

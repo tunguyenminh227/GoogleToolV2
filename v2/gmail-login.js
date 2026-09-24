@@ -73,9 +73,25 @@ const clickAndWaitUrl = t('gmail.clickAndWaitUrl', async (page, click, timeoutMs
     onClose = t('gmail.pageClosed', () => reject(failure('closed', 'Trình duyệt đã đóng.')));
     onError = t('gmail.pageError', () => reject(failure('page_error', 'Trang đăng nhập gặp lỗi.')));
     page.on('framenavigated', onNavigation); page.on('close', onClose); page.on('error', onError);
-    timer = setTimeout(t('gmail.urlTimeout', () => {
+    timer = setTimeout(t('gmail.urlTimeout', async () => {
       console.error('[login-trace] ❌ Hết thời gian chờ: URL không đổi sau khi nhấn "Tiếp theo" (Next).');
-      reject(failure('url_unchanged', 'URL không đổi sau Next. Kiểm tra lỗi trên trang; luồng đã dừng.'));
+      let pageMsg = '';
+      try {
+        if (typeof page.evaluate === 'function') {
+          const res = await page.evaluate(() => {
+            const sel = '[aria-live="assertive"], div[jsname="B1fBne"], .Ekjuhf, div[role="alert"], div.o6cuMc, .dEOOab';
+            const els = [...document.querySelectorAll(sel)];
+            for (const el of els) {
+              const txt = (el.innerText || el.textContent || '').trim();
+              if (txt && !el.hidden && el.offsetParent !== null) return txt;
+            }
+            return '';
+          });
+          if (typeof res === 'string') pageMsg = res;
+        }
+      } catch (_) {}
+      const errMsg = pageMsg ? `Lỗi: ${pageMsg.slice(0, 100)}` : 'URL không đổi sau Next (kiểm tra mật khẩu/tài khoản).';
+      reject(failure('url_unchanged', errMsg));
     }), timeoutMs);
   }));
   try {
@@ -886,10 +902,10 @@ const login = t('gmail.login', async (page, account, onStatus, input = {}) => {
     throw failure('step_limit', 'Quá số bước đăng nhập; cần kiểm tra thủ công.');
   } catch (error) {
     if (error.loginCode === 'url_unchanged' || error.name === 'TimeoutError') {
-      await onStatus('error');
+      await onStatus('error', error.message || 'Hết thời gian chờ đăng nhập.');
       try { await closeTimedOutBrowser(page); }
       catch { throw failure('timeout_close_failed', 'Hết thời gian chờ đăng nhập nhưng chưa đóng được trình duyệt.'); }
-      throw failure('timeout', 'Hết thời gian chờ đăng nhập; đã đóng trình duyệt và nhường slot.');
+      throw failure('timeout', error.message || 'Hết thời gian chờ đăng nhập; đã đóng trình duyệt và nhượng slot.');
     }
     if (error.loginCode) throw error;
     // Puppeteer exceptions may contain URLs or DOM values: never forward them.
