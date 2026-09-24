@@ -198,7 +198,7 @@ const render = window.uiTrace('renderer.render', function (data = state) {
     status.title = p.running ? 'Đang mở' : 'Chưa mở';
     status.setAttribute('aria-label', status.title);
     email.textContent = p.email || p.name;
-    const mailLabels = { starting: 'Đang mở…', email: 'Nhập email…', password: 'Nhập mật khẩu…', recovery: 'Email khôi phục…', totp: 'Authenticator…', selection: 'Chọn xác minh…', skotp: 'Security Code…', verify_phone: 'Xác minh SĐT…', inbox: 'Đang vào Gmail…', success: 'Đã đăng nhập', manual: 'Cần xử lý', error: 'Lỗi đăng nhập', recaptcha: 'Giải reCAPTCHA…' };
+    const mailLabels = { starting: 'Đang mở…', email: 'Nhập email…', password: 'Nhập mật khẩu…', recovery: 'Email khôi phục…', totp: 'Authenticator…', selection: 'Chọn xác minh…', skotp: 'Security Code…', verify_phone: 'Xác minh SĐT…', rejected: 'Bị từ chối', inbox: 'Đang vào Gmail…', success: 'Đã đăng nhập', manual: 'Cần xử lý', error: 'Lỗi đăng nhập', recaptcha: 'Giải reCAPTCHA…' };
     const mailStatus = element('td', 'mail-status', mailLabels[p.mailStatus] || '—');
     mailStatus.title = mailLabels[p.mailStatus] || 'Chưa kiểm tra đăng nhập Gmail';
     const accountCell = (key, secret = false) => {

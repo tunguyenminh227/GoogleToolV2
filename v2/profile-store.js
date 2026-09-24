@@ -116,7 +116,7 @@ class ProfileStore {
 
   setMailStatus = trace.traced('store.setMailStatus', (id, mailStatus) => {
     this.get(id);
-    const allowed = ['starting', 'email', 'password', 'password_reached', 'recovery', 'totp', 'selection', 'inbox', 'success', 'manual', 'error', 'recaptcha'];
+    const allowed = ['starting', 'email', 'password', 'password_reached', 'recovery', 'totp', 'selection', 'inbox', 'success', 'manual', 'error', 'recaptcha', 'skotp', 'verify_phone', 'rejected'];
     if (!allowed.includes(mailStatus)) throw new Error('Trạng thái Gmail không hợp lệ.');
     this.save(this.profiles.map(trace.traced('store.mailStatusRow', p => p.id === id ? { ...p, mailStatus, updatedAt: new Date().toISOString() } : p)));
   }, { profileArgument: 0 });
