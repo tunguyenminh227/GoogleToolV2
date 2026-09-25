@@ -16,7 +16,7 @@ test('rejected sign-in stops with a safe error after email navigation', t('test.
     t('fake.rejectedStatus', state => states.push(state)), { timeoutMs: 100 }), {
     loginCode: 'rejected', message: 'Google đã từ chối đăng nhập (signin/rejected).'
   });
-  assert.deepEqual(states, ['starting', 'email']);
+  assert.deepEqual(states, ['starting', 'email', 'rejected']);
   assert.equal(closed, 1, 'Close the rejected profile browser exactly once');
   assert.equal(page.typed.map(t('fake.typedCharacter', entry => entry.character)).join(''), 'fake@example.com');
 }));
@@ -33,7 +33,7 @@ test('verify phone challenge stops with a safe error and closes browser', t('tes
     t('fake.verifyPhoneStatus', state => states.push(state)), { timeoutMs: 100 }), {
     loginCode: 'verify_phone', message: 'Google yêu cầu xác minh số điện thoại (verify phone).'
   });
-  assert.deepEqual(states, ['starting', 'email']);
+  assert.deepEqual(states, ['starting', 'email', 'verify_phone']);
   assert.equal(closed, 1, 'Close the verify phone profile browser exactly once');
   assert.equal(page.typed.map(t('fake.typedCharacter', entry => entry.character)).join(''), 'fake@example.com');
 }));
@@ -306,6 +306,7 @@ test('handles selection challenge by closing browser when Google Authenticator i
     ),
     { loginCode: 'no_authenticator' }
   );
+  assert.deepEqual(states, ['starting', 'email', 'password', 'selection', 'manual']);
   assert.equal(closed, 1, 'Browser must be closed when Google Authenticator option is missing');
 }));
 

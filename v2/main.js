@@ -235,6 +235,16 @@ const loginProfile = trace.traced('loginProfile', async id => {
     running.set(id, child);
     child.once('exit', trace.traced('gmail.browserExit', () => {
       if (running.get(id) === child) { running.delete(id); windowSlots.delete(id); void closeProxy(id); }
+      try {
+        const current = store.get(id);
+        const inProgress = ['starting', 'email', 'password', 'recovery', 'totp', 'selection', 'skotp', 'recaptcha', 'inbox'];
+        if (inProgress.includes(current.mailStatus)) {
+          store.setMailStatus(id, 'error', 'Trình duyệt đã đóng');
+        }
+      } catch (_) {}
+      if (browser) {
+        try { browser.close().catch(() => {}); } catch (_) {}
+      }
       broadcast();
     }));
     store.markOpened(id); broadcast();
@@ -262,7 +272,7 @@ const loginProfile = trace.traced('loginProfile', async id => {
     const errorMsg = error.message || 'Lỗi đăng nhập';
     const statusCode = error.loginCode === 'rejected' ? 'rejected' :
       error.loginCode === 'verify_phone' ? 'verify_phone' :
-      error.loginCode === 'manual' || error.loginCode === 'missing_data' || error.loginCode === 'missing_totp' ? 'manual' : 'error';
+      error.loginCode === 'manual' || error.loginCode === 'missing_data' || error.loginCode === 'missing_totp' || error.loginCode === 'no_authenticator' ? 'manual' : 'error';
     status(statusCode, errorMsg);
     throw new Error(error.loginCode ? error.message : 'Không thể bắt đầu Login gmail. Hãy đóng profile đang mở và kiểm tra cấu hình trình duyệt.');
   } finally {
@@ -290,6 +300,13 @@ const openProfile = trace.traced('openProfile', async (id, url = null, tiled = f
   if (!alreadyRunning) running.set(id, child);
   child.once('exit', trace.traced('openProfile.exit', () => {
     if (running.get(id) === child) { running.delete(id); windowSlots.delete(id); void closeProxy(id); }
+    try {
+      const current = store.get(id);
+      const inProgress = ['starting', 'email', 'password', 'recovery', 'totp', 'selection', 'skotp', 'recaptcha', 'inbox'];
+      if (inProgress.includes(current.mailStatus)) {
+        store.setMailStatus(id, 'manual', 'Trình duyệt đã đóng');
+      }
+    } catch (_) {}
     broadcast();
   }));
   await new Promise(trace.traced('openProfile.spawn', (resolve, reject) => {

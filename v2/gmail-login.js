@@ -432,7 +432,7 @@ const closeSelectionBrowser = t('gmail.closeSelectionBrowser', async page => {
   }
 });
 
-const stepSelection = t('gmail.stepSelection', async (page, account, options) => {
+const stepSelection = t('gmail.stepSelection', async (page, account, options, onStatus) => {
   console.log('[login-trace] 11. Bước CHỌN PHƯƠNG THỨC XÁC MINH (challenge/selection)...');
 
   const startWait = Date.now();
@@ -468,6 +468,9 @@ const stepSelection = t('gmail.stepSelection', async (page, account, options) =>
 
   if (!authenticatorFound) {
     console.warn('[login-trace] 11.x Không tìm thấy dòng "Get a verification code from the Google Authenticator app" -> Đóng trình duyệt và báo lỗi.');
+    if (typeof onStatus === 'function') {
+      await onStatus('manual', 'Không có tùy chọn Google Authenticator trong danh sách xác minh; đã đóng trình duyệt.');
+    }
     await closeSelectionBrowser(page);
     throw failure('no_authenticator', 'Không có tùy chọn Google Authenticator trong danh sách xác minh; đã đóng trình duyệt.');
   }
@@ -848,10 +851,12 @@ const login = t('gmail.login', async (page, account, onStatus, input = {}) => {
     for (let step = 0; step < 10; step++) {
       const state = classify(page.url());
       if (state === 'rejected') {
+        await onStatus('rejected', 'Google đã từ chối đăng nhập (signin/rejected).');
         await closeRejectedBrowser(page);
         throw failure('rejected', 'Google đã từ chối đăng nhập (signin/rejected).');
       }
       if (state === 'verify_phone') {
+        await onStatus('verify_phone', 'Google yêu cầu xác minh số điện thoại (verify phone).');
         await closeVerifyPhoneBrowser(page);
         throw failure('verify_phone', 'Google yêu cầu xác minh số điện thoại (verify phone).');
       }
@@ -864,7 +869,7 @@ const login = t('gmail.login', async (page, account, onStatus, input = {}) => {
       }
       if (state === 'manual') throw failure('manual', 'Cần thao tác thủ công trên trình duyệt (CAPTCHA, chọn tài khoản hoặc xác minh khác).');
       if (state === 'selection') {
-        await stepSelection(page, account, options);
+        await stepSelection(page, account, options, onStatus);
         continue;
       }
       if (state === 'recaptcha') {
@@ -878,8 +883,8 @@ const login = t('gmail.login', async (page, account, onStatus, input = {}) => {
       }
       if (state === 'password') {
         if (!account.password) {
+          await onStatus('password_reached', 'Chờ mật khẩu');
           await closeWithoutPassword(page, options);
-          await onStatus('password_reached');
           return { status: 'password_reached' };
         }
         await stepPassword(page, account, options);

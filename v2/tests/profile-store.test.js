@@ -171,3 +171,25 @@ test('legacy profiles migrate once with a backup and separate Chromium browser d
   assert.deepEqual(new ProfileStore(store.root).get(legacy.id).fingerprint, profile.fingerprint);
 });
 
+test('setMailStatus persists status and error message cleanly', trace.traced('test.setMailStatus', t => {
+  const store = setup(t);
+  const p = store.create({ name: 'Mail Status Test', email: 'mailtest@example.com' });
+  store.setMailStatus(p.id, 'starting');
+  assert.equal(store.get(p.id).mailStatus, 'starting');
+  assert.equal(store.get(p.id).mailError, null);
+
+  store.setMailStatus(p.id, 'rejected', 'Google đã từ chối đăng nhập (signin/rejected).');
+  const rejected = store.get(p.id);
+  assert.equal(rejected.mailStatus, 'rejected');
+  assert.equal(rejected.mailError, 'Google đã từ chối đăng nhập (signin/rejected).');
+
+  store.setMailStatus(p.id, 'verify_phone');
+  const verify = store.get(p.id);
+  assert.equal(verify.mailStatus, 'verify_phone');
+  assert.equal(verify.mailError, 'Google yêu cầu xác minh số điện thoại (verify phone)');
+
+  store.setMailStatus(p.id, 'error', 'Trình duyệt đã đóng');
+  const closed = store.get(p.id);
+  assert.equal(closed.mailStatus, 'error');
+  assert.equal(closed.mailError, 'Trình duyệt đã đóng');
+}));
