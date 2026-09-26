@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { EventEmitter } = require('node:events');
 const { traced: t } = require('../trace-log');
-const { classify, totp, login, clickAndWaitUrl } = require('../gmail-login');
+const { classify, totp, login, clickAndWaitUrl, stepPasskey, signInViaFreshPasskeyTab, clickPasskeyContinue } = require('../gmail-login');
 
 test('rejected sign-in stops with a safe error after email navigation', t('test.gmailRejected', async () => {
   const url = 'https://accounts.google.com/v3/signin/rejected?TL=fixture-secret&flowEntry=ServiceLogin';
@@ -45,6 +45,9 @@ test('Gmail URL classification trusts only HTTPS Google hosts and RFC TOTP is co
   assert.equal(classify('https://accounts.google.com/v3/signin/challenge/recaptcha'), 'recaptcha');
   assert.equal(classify('https://accounts.google.com/v3/signin/challenge/iap'), 'verify_phone');
   assert.equal(classify('https://accounts.google.com/v3/signin/challenge/skotp'), 'skotp');
+  assert.equal(classify('https://accounts.google.com/v3/signin/challenge/pk'), 'passkey');
+  assert.equal(classify('https://mail.google.com/mail/u/0/#inbox'), 'inbox');
+  assert.equal(classify('https://mail.google.com/mail/u/0/'), 'inbox');
   assert.equal(classify('https://mail.google.com.evil.example/mail/u/0/'), 'manual');
   assert.equal(classify('http://accounts.google.com/v3/signin/identifier'), 'manual');
   assert.equal(totp('GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', 59000), '287082');
@@ -180,6 +183,15 @@ test('unverified account and missing password stop without claiming success', t(
   assert.equal(page.typed.length, 0);
 }));
 
+test('landing on mail.google.com/mail/u/0/#inbox completes login immediately with success', t('test.gmailDirectInbox', async () => {
+  const page = fakePage();
+  page.currentUrl = 'https://mail.google.com/mail/u/0/#inbox';
+  const states = [];
+  const result = await login(page, { email: 'fake@example.com' }, t('fake.directInboxStatus', state => states.push(state)), { timeoutMs: 100 });
+  assert.equal(result.status, 'success');
+  assert.deepEqual(states, ['starting', 'success']);
+}));
+
 test('handles recaptcha challenge by clicking checkbox and solving via twoCaptcha without clicking next button', t('test.gmailRecaptcha', async () => {
   const destinations = [
     'https://accounts.google.com/v3/signin/challenge/recaptcha',
@@ -221,6 +233,39 @@ test('handles recaptcha challenge by clicking checkbox and solving via twoCaptch
   assert.deepEqual(page.mouseClicked[0], { x: 128, y: 250 });
   // Đảm bảo không bấm bất kỳ nút nào ở bước recaptcha
   assert.ok(!clickedSelectors.some(s => s.includes('recaptcha')));
+}));
+
+test('handles recaptcha challenge when button is SKIP and clicking SKIP yields green checkmark, auto-clicking Next', t('test.gmailRecaptchaSkipToChecked', async () => {
+  const destinations = [
+    'https://accounts.google.com/v3/signin/challenge/recaptcha',
+    'https://accounts.google.com/v3/signin/challenge/pwd',
+    'https://mail.google.com/mail/u/0/#inbox'
+  ];
+  const page = fakePage(destinations);
+  const clickedSelectors = [];
+  const originalClick = page.click;
+  page.click = t('fake.trackingClickSkip', async selector => {
+    clickedSelectors.push(selector);
+    return originalClick(selector);
+  });
+
+  const mockSolver = {
+    solveAndBypass: t('fake.solveAndBypassSkip', async () => {
+      return { success: true, detected: true, bypassedNaturally: true, skipBypassed: true };
+    }),
+  };
+
+  const states = [];
+  const result = await login(
+    page,
+    { email: 'fake@example.com', password: 'fake-pass' },
+    t('fake.statusRecaptchaSkip', status => states.push(status)),
+    { typingDelayMs: 10, timeoutMs: 100, solver: mockSolver }
+  );
+
+  assert.equal(result.status, 'success');
+  assert.deepEqual(states, ['starting', 'email', 'recaptcha', 'password', 'inbox', 'success']);
+  assert.ok(clickedSelectors.some(s => s.includes('Next') || s.includes('recaptcha')));
 }));
 
 test('handles skotp challenge by entering security code when available in account', t('test.gmailSkotpWithCode', async () => {
@@ -308,6 +353,185 @@ test('handles selection challenge by closing browser when Google Authenticator i
   );
   assert.deepEqual(states, ['starting', 'email', 'password', 'selection', 'manual']);
   assert.equal(closed, 1, 'Browser must be closed when Google Authenticator option is missing');
+}));
+
+test('handles passkey challenge by signing in via fresh tab with CDP virtual authenticator', t('test.gmailPasskeySuccess', async () => {
+  const destinations = [
+    'https://accounts.google.com/v3/signin/challenge/pk',
+  ];
+  const page = fakePage(destinations);
+  page.goto = t('fake.pageGoto', async url => {
+    if (url.includes('mail.google.com/mail')) {
+      page.currentUrl = 'https://mail.google.com/mail/u/0/#inbox';
+      page.emit('framenavigated', page);
+    } else {
+      page.startedAt = url;
+    }
+  });
+
+  const cdpCalls = [];
+  const freshPage = new EventEmitter();
+  freshPage.currentUrl = 'about:blank';
+  freshPage.url = t('fake.freshUrl', () => freshPage.currentUrl);
+  freshPage.goto = t('fake.freshGoto', async url => {
+    freshPage.currentUrl = url;
+  });
+  freshPage.evaluate = t('fake.freshEval', async fn => {
+    freshPage.currentUrl = 'https://mail.google.com/mail/u/0/#inbox';
+    return true;
+  });
+  freshPage.close = t('fake.freshClose', async () => {});
+  freshPage.target = t('fake.freshTarget', () => ({
+    createCDPSession: t('fake.createCDPSession', async () => ({
+      send: t('fake.cdpSend', async (method, params) => {
+        cdpCalls.push({ method, params });
+        if (method === 'WebAuthn.addVirtualAuthenticator') {
+          return { authenticatorId: 'mock-auth-id-123' };
+        }
+        return {};
+      }),
+      detach: t('fake.cdpDetach', async () => {})
+    }))
+  }));
+
+  page.browser = t('fake.passkeyBrowser', () => ({
+    newPage: t('fake.newPage', async () => freshPage),
+    close: t('fake.browserClose', async () => {})
+  }));
+
+  const fakePasskey = Buffer.from(JSON.stringify({ id: 'cred-123', rawId: 'cred-123' })).toString('base64');
+  const states = [];
+  const result = await login(
+    page,
+    { email: 'fake@example.com', password: 'fake-pass', passkey: fakePasskey },
+    t('fake.statusPasskeySuccess', status => states.push(status)),
+    { typingDelayMs: 10, timeoutMs: 100 }
+  );
+
+  assert.equal(result.status, 'success');
+  assert.deepEqual(states, ['starting', 'email', 'passkey', 'inbox', 'success']);
+  assert.ok(cdpCalls.some(c => c.method === 'WebAuthn.enable'));
+  assert.ok(cdpCalls.some(c => c.method === 'WebAuthn.addVirtualAuthenticator'));
+  assert.ok(cdpCalls.some(c => c.method === 'WebAuthn.addCredential'));
+}));
+
+test('handles passkey challenge by clicking Try another way when account has no passkey', t('test.gmailPasskeyFallback', async () => {
+  const destinations = [
+    'https://accounts.google.com/v3/signin/challenge/pk',
+    'https://accounts.google.com/v3/signin/challenge/pwd',
+    'https://mail.google.com/mail/u/0/#inbox'
+  ];
+  const page = fakePage(destinations);
+  const states = [];
+  const result = await login(
+    page,
+    { email: 'fake@example.com', password: 'fake-pass' },
+    t('fake.statusPasskeyFallback', status => states.push(status)),
+    { typingDelayMs: 10, timeoutMs: 100 }
+  );
+
+  assert.equal(result.status, 'success');
+  assert.deepEqual(states, ['starting', 'email', 'passkey', 'password', 'inbox', 'success']);
+}));
+
+test('handles passkey challenge by automatically clicking Continue button on page', t('test.gmailPasskeyClickContinue', async () => {
+  const destinations = [
+    'https://accounts.google.com/v3/signin/challenge/pk',
+    'https://mail.google.com/mail/u/0/#inbox'
+  ];
+  const page = fakePage(destinations);
+  page.evaluate = t('fake.evaluateContinue', async script => {
+    if (typeof script === 'function' && script.toString().includes('#passkeyNext')) {
+      const next = destinations.shift();
+      if (next) { page.currentUrl = next; page.emit('framenavigated', page); }
+      return true;
+    }
+    return true;
+  });
+
+  const states = [];
+  const result = await login(
+    page,
+    { email: 'fake@example.com', password: 'fake-pass' },
+    t('fake.statusPasskeyContinue', status => states.push(status)),
+    { typingDelayMs: 10, timeoutMs: 100 }
+  );
+
+  assert.equal(result.status, 'success');
+  assert.deepEqual(states, ['starting', 'email', 'passkey', 'inbox', 'success']);
+}));
+
+const TwoCaptchaSolver = require('../twoCaptcha');
+
+test('TwoCaptchaSolver handleSkipFlow returns skipBypassed when checkbox becomes checked', t('test.twoCaptchaHandleSkipChecked', async () => {
+  const solver = new TwoCaptchaSolver({ apiKey: 'test-key' });
+  let clicked = 0;
+  const mockFrame = {
+    click: async () => { clicked++; },
+    evaluate: async fn => fn(),
+  };
+  const mockPage = {
+    frames: () => [mockFrame],
+  };
+  const mockEvaluate = async () => 'checked';
+  const initialBtn = {
+    frame: mockFrame,
+    found: true,
+    text: 'SKIP',
+    type: 'skip',
+    disabled: false,
+  };
+  const res = await solver.handleSkipFlow({
+    page: mockPage,
+    evaluate: mockEvaluate,
+    initialBtn,
+    maxSkips: 2,
+  });
+  assert.equal(res.skipBypassed, true);
+  assert.equal(res.bypassedNaturally, true);
+  assert.equal(clicked, 1);
+}));
+
+test('TwoCaptchaSolver handleSkipFlow returns proceedToSolve when button turns into Verify', t('test.twoCaptchaHandleSkipToVerify', async () => {
+  const solver = new TwoCaptchaSolver({ apiKey: 'test-key' });
+  let clicked = 0;
+  let currentText = 'SKIP';
+  const mockFrame = {
+    url: () => 'https://www.google.com/recaptcha/api2/bframe',
+    click: async () => { clicked++; currentText = 'Verify'; },
+    evaluate: async () => ({
+      innerText: currentText,
+      disabled: false,
+      getAttribute: () => null,
+    }),
+  };
+  // Override getChallengeButtonInfo to simulate reload to Verify
+  solver.getChallengeButtonInfo = async () => ({
+    frame: mockFrame,
+    found: true,
+    text: 'Verify',
+    type: 'verify',
+    disabled: false,
+  });
+  const mockPage = {
+    frames: () => [mockFrame],
+  };
+  const mockEvaluate = async () => 'unchecked';
+  const initialBtn = {
+    frame: mockFrame,
+    found: true,
+    text: 'SKIP',
+    type: 'skip',
+    disabled: false,
+  };
+  const res = await solver.handleSkipFlow({
+    page: mockPage,
+    evaluate: mockEvaluate,
+    initialBtn,
+    maxSkips: 2,
+  });
+  assert.equal(res.proceedToSolve, true);
+  assert.equal(clicked, 1);
 }));
 
 

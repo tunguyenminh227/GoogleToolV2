@@ -40,9 +40,39 @@ test('pipe/tab import preserves empty columns and normalizes TOTP spacing', () =
   assert.deepEqual(importLines('\na@example.com\r\n\r\nb@example.com').map(r => r.lineNumber), [2, 4]);
 });
 test('invalid import fails without echoing account secrets', () => {
-  for (const line of ['bad|sensitive', 'a@example.com|sensitive|invalid', 'a@example.com|sensitive||123456', 'a@example.com|sensitive|||extra']) {
+  for (const line of ['bad|sensitive', 'a@example.com|sensitive|invalid', 'a@example.com|sensitive||123456', 'a@example.com|sensitive||||||extra']) {
     assert.throws(() => parseLine(line), e => !e.message.includes('sensitive'));
   }
   assert.throws(() => importLines(''));
   assert.throws(() => importLines(Array(501).fill('a@example.com').join('\n')));
+});
+
+test('supports importing security code and passkey', () => {
+  const userPasskeyBlob = 'eyJjcmVkZW50aWFsSWQiOiJRaGRKTDc3ZFVMc0JvdGRHK1RnaXJkWHYvQUwrT043MmNpdnd1V2JiTno0PSIsImlzUmVzaWRlbnRDcmVkZW50aWFsIjp0cnVlLCJycElkIjoiZ29vZ2xlLmNvbSJ9';
+  const userLine = `lynhatruc65391@gmail.com|Nochuachetdau@123|alibabatrap1@gmail.com|5dyumonzlnzc6l3z7uabyirr3ida32kt|${userPasskeyBlob}`;
+  const parsed5 = parseLine(userLine);
+  assert.equal(parsed5.email, 'lynhatruc65391@gmail.com');
+  assert.equal(parsed5.password, 'Nochuachetdau@123');
+  assert.equal(parsed5.recoveryMail, 'alibabatrap1@gmail.com');
+  assert.equal(parsed5.twofa, '5DYUMONZLNZC6L3Z7UABYIRR3IDA32KT');
+  assert.equal(parsed5.passkey, userPasskeyBlob);
+  assert.equal(parsed5.securityCode, undefined);
+
+  // 5 columns with security code (not passkey)
+  const secLine = 'lynhatruc65391@gmail.com|Nochuachetdau@123|alibabatrap1@gmail.com|5dyumonzlnzc6l3z7uabyirr3ida32kt|12345678';
+  const parsedSec = parseLine(secLine);
+  assert.equal(parsedSec.securityCode, '12345678');
+  assert.equal(parsedSec.passkey, undefined);
+
+  // 6 columns with both security code and passkey
+  const fullLine = `lynhatruc65391@gmail.com|Nochuachetdau@123|alibabatrap1@gmail.com|5dyumonzlnzc6l3z7uabyirr3ida32kt|12345678|${userPasskeyBlob}`;
+  const parsed6 = parseLine(fullLine);
+  assert.equal(parsed6.securityCode, '12345678');
+  assert.equal(parsed6.passkey, userPasskeyBlob);
+
+  // Multi-line block with security code and passkey
+  const blockText = `Email: test@example.com\nPassword: pwd\nRecovery: rec@example.com\n2FA: jbswy3dp\nSecurity code: 999888\nPasskey: ${userPasskeyBlob}`;
+  const parsedBlock = parseLine(blockText);
+  assert.equal(parsedBlock.securityCode, '999888');
+  assert.equal(parsedBlock.passkey, userPasskeyBlob);
 });

@@ -32,6 +32,7 @@ test('launch arguments retain the seed and automatic GPU configuration without s
   assert.ok(resume.every(arg => arg.startsWith('--')));
   assert.ok(resume.includes('--window-size=1280,720'));
   assert.ok(!args.some(arg => /no-sandbox|disable-web-security|remote-debugging/.test(arg)));
+  assert.ok(launchArgs(root, 'https://ads.google.com/aw/billing/advertiserverification', fingerprint).includes('https://ads.google.com/aw/billing/advertiserverification'));
   assert.throws(() => launchArgs(root, 'https://unapproved.example/', fingerprint));
   assert.throws(() => fingerprintArgs({ ...fingerprint, seed: '--another-flag' }));
   assert.throws(() => createFingerprint('toString'));

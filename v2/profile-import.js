@@ -1,7 +1,22 @@
 const { traced: t } = require('./trace-log');
+
+const isPasskeyBlob = t('import.isPasskey', str => {
+  if (!str || typeof str !== 'string') return false;
+  const s = str.trim();
+  if (s.length < 30) return false;
+  try {
+    const json = JSON.parse(Buffer.from(s, 'base64').toString('utf8'));
+    return Boolean(json && (json.credentialId || json.rpId || json.privateKey || json.id));
+  } catch (_) {
+    return s.startsWith('ey') && s.length > 50;
+  }
+});
+
 const parseLine = t('import.parseLine', line => {
   let fields;
-  if (/^\s*(Email|Password|Recovery|2FA key)\s*:/im.test(line)) {
+  let securityCode = '';
+  let passkey = '';
+  if (/^\s*(Email|Password|Recovery|2FA key|2FA|Security code|Backup code|Passkey)\s*:/im.test(line)) {
     const values = {};
     for (const row of line.split(/\r?\n/)) {
       if (!row.trim()) continue;
@@ -9,29 +24,57 @@ const parseLine = t('import.parseLine', line => {
         values.email = row.trim().replace(/\\$/, '').replace(/\\@/g, '@');
         continue;
       }
-      const match = /^\s*(Email|Password|Recovery|2FA key)\s*:\s*(.*?)\s*$/i.exec(row);
-      if (!match) throw new Error('Dòng không hợp lệ trong khối Email/Password/Recovery/2FA key.');
-      const key = match[1].toLowerCase();
+      const match = /^\s*(Email|Password|Recovery|Recovery\s*Mail|Recovery\s*Email|2FA\s*key|2FA|Security\s*code|Securitycode|Backup\s*code|Passkey)\s*:\s*(.*?)\s*$/i.exec(row);
+      if (!match) throw new Error('Dòng không hợp lệ trong khối thông tin tài khoản.');
+      let key = match[1].toLowerCase().replace(/\s+/g, '');
+      if (key === 'recoverymail' || key === 'recoveryemail') key = 'recovery';
+      if (key === '2fa') key = '2fakey';
+      if (key === 'backupcode') key = 'securitycode';
       if (Object.hasOwn(values, key)) throw new Error('Trường bị lặp trong khối tài khoản.');
       values[key] = match[2].replace(/\\$/, '').replace(/\\@/g, '@');
     }
-    fields = ['email', 'password', 'recovery', '2fa key'].map(t('import.blockField', key => values[key] || ''));
-  } else fields = line.split(/[|\t]/).map(t('import.trimField', s => s.trim()));
-  if (fields.length > 4) throw new Error('Chỉ nhập tối đa 4 cột: Mail|Password|RecoveryMail|2FA.');
+    fields = [values.email || '', values.password || '', values.recovery || '', values['2fakey'] || ''];
+    securityCode = values.securitycode || '';
+    passkey = values.passkey || '';
+  } else {
+    fields = line.split(/[|\t]/).map(t('import.trimField', s => s.trim()));
+    if (fields.length > 6) throw new Error('Chỉ nhập tối đa 6 cột: Mail|Password|RecoveryMail|2FA|SecurityCode|Passkey.');
+    if (fields.length === 5) {
+      if (isPasskeyBlob(fields[4])) {
+        passkey = fields[4];
+      } else {
+        securityCode = fields[4];
+      }
+    } else if (fields.length >= 6) {
+      securityCode = fields[4];
+      passkey = fields[5];
+    }
+  }
+
   const [email, password = '', recoveryMail = '', rawTwofa = ''] = fields;
   const isEmail = t('import.isEmail', value => value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value));
   if (!isEmail(email)) throw new Error('Email không hợp lệ.');
   if (recoveryMail && !isEmail(recoveryMail)) throw new Error('Email khôi phục không hợp lệ.');
   const twofa = rawTwofa.replace(/\s+/g, '').toUpperCase();
   if (twofa && !/^[A-Z2-7]+=*$/.test(twofa)) throw new Error('Khóa 2FA phải là mã secret Base32.');
-  if (password.length > 1024 || twofa.length > 512) throw new Error('Dữ liệu tài khoản quá dài.');
-  return { email, password, recoveryMail, twofa };
+  if (passkey.startsWith('{') && passkey.endsWith('}')) {
+    try {
+      JSON.parse(passkey);
+      passkey = Buffer.from(passkey, 'utf8').toString('base64');
+    } catch (_) {}
+  }
+  if (password.length > 1024 || twofa.length > 512 || securityCode.length > 512 || passkey.length > 8192) throw new Error('Dữ liệu tài khoản quá dài.');
+  const result = { email, password, recoveryMail, twofa };
+  if (securityCode) result.securityCode = securityCode;
+  if (passkey) result.passkey = passkey;
+  return result;
 });
+
 const importLines = t('import.lines', text => {
   if (typeof text !== 'string' || text.length > 1024 * 1024) throw new Error('Danh sách nhập quá lớn hoặc không hợp lệ.');
   const rows = text.split(/\r?\n/);
   let lines = [];
-  if (/^\s*(Email|Password|Recovery|2FA key)\s*:/im.test(text)) {
+  if (/^\s*(Email|Password|Recovery|2FA key|2FA|Security code|Backup code|Passkey)\s*:/im.test(text)) {
     let current;
     for (let i = 0; i < rows.length; i++) {
       if (/^\s*Email\s*:/i.test(rows[i]) || /^[^\s:@|]+@[^\s@|]+\.[^\s@|]+\\?$/.test(rows[i].trim())) {
@@ -45,4 +88,5 @@ const importLines = t('import.lines', text => {
   if (lines.length > 500) throw new Error('Mỗi lần tạo tối đa 500 profile.');
   return lines;
 });
-module.exports = { parseLine, importLines };
+
+module.exports = { parseLine, importLines, isPasskeyBlob };

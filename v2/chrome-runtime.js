@@ -51,7 +51,7 @@ function resolveChrome(selected, getVersion = readVersion) {
 }
 
 function launchArgs(directory, url) {
-  if (!['https://mail.google.com/', 'https://iphey.com/'].includes(url)) throw new Error('Địa chỉ mở profile không hợp lệ.');
+  if (url !== null && !['https://mail.google.com/', 'https://iphey.com/', 'https://ads.google.com/aw/billing/advertiserverification'].includes(url) && !url.startsWith('https://ads.google.com/')) throw new Error('Địa chỉ mở profile không hợp lệ.');
   // Never downgrade a data directory already opened by a newer Chrome.
   const marker = path.join(directory, 'Last Version');
   if (fs.existsSync(marker)) {

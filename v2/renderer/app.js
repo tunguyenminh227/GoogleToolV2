@@ -159,6 +159,8 @@ const copyProfileData = window.uiTrace('renderer.copyData', async fieldsToCopy =
       lines.push(p.recoveryMail || '');
     } else if (fieldsToCopy === 'securityCode') {
       lines.push(p.securityCode || '');
+    } else if (fieldsToCopy === 'passkey') {
+      lines.push(p.passkey || '');
     }
   }
 
@@ -177,7 +179,8 @@ const copyProfileData = window.uiTrace('renderer.copyData', async fieldsToCopy =
       'twofa-code': '2FA Code',
       twofa: '2FA Key',
       recoveryMail: 'Email khôi phục',
-      securityCode: 'Security code'
+      securityCode: 'Security code',
+      passkey: 'Passkey'
     };
     const label = labels[fieldsToCopy] || 'dữ liệu';
     toast(`Đã sao chép ${label} (${lines.length} profile).`);
@@ -199,7 +202,7 @@ document.querySelectorAll('[data-action]').forEach(button => button.addEventList
   selectedAction = button.dataset.action;
   $('actionButton').textContent = `${button.textContent} ▾`;
   closeActionMenu(); updateSelection(); $('actionButton').focus();
-  if (runImmediately) $('runAction').click();
+  if (selectedAction === 'verify-ads' || runImmediately) $('runAction').click();
 }));
 document.querySelectorAll('[data-copy]').forEach(button => button.addEventListener('click', async event => {
   event.stopPropagation();
@@ -212,17 +215,23 @@ document.addEventListener('keydown', event => { if (event.key === 'Escape' && !$
 window.addEventListener('resize', closeActionMenu);
 document.querySelector('.table-wrap').addEventListener('scroll', closeActionMenu);
 $('runAction').addEventListener('click', window.uiTrace('renderer.runAction', async () => {
-  if (actionBusy || !selected.size || !['open', 'delete', 'login-gmail'].includes(selectedAction)) return;
+  if (actionBusy || !selected.size || !['open', 'delete', 'login-gmail', 'enable-passkey', 'verify-ads'].includes(selectedAction)) return;
   const ids = [...selected];
   const action = selectedAction;
-  if (['open', 'login-gmail'].includes(action) && !$('threadLimit').reportValidity()) return;
+  if (action === 'verify-ads') {
+    closeActionMenu();
+    openVerifyAdsModal();
+    return;
+  }
+  if (['open', 'login-gmail', 'enable-passkey'].includes(action) && !$('threadLimit').reportValidity()) return;
   actionBusy = true; closeActionMenu(); updateSelection();
   let completed = 0, skipped = 0;
   const errors = [];
   try {
-    if (action === 'open' || action === 'login-gmail') {
+    if (action === 'open' || action === 'login-gmail' || action === 'enable-passkey' || action === 'verify-ads') {
       const result = await window.googleTool.openProfiles({ ids, limit: Number($('threadLimit').value), action });
-      toast(`Đã thêm ${result.added} profile vào hàng đợi ${action === 'login-gmail' ? 'Login gmail' : 'mở'}.`);
+      const actionName = action === 'login-gmail' ? 'Login gmail' : action === 'enable-passkey' ? 'bật Passkey' : action === 'verify-ads' ? 'xác minh Ads' : 'mở';
+      toast(`Đã thêm ${result.added} profile vào hàng đợi ${actionName}.`);
       return;
     } else if (action === 'delete') {
       const batch = await window.googleTool.deleteProfiles(ids);
@@ -239,6 +248,8 @@ $('runAction').addEventListener('click', window.uiTrace('renderer.runAction', as
       try {
         if (action === 'open') await window.googleTool.openProfile(id);
         if (action === 'login-gmail') await window.googleTool.loginGmail(id);
+        if (action === 'enable-passkey') await window.googleTool.enablePasskey(id);
+        if (action === 'verify-ads') await window.googleTool.verifyAds(id);
         completed++;
       } catch (error) { errors.push(`${profile.name}: ${error.message}`); }
     }
@@ -298,7 +309,9 @@ const mailLabels = {
   success: 'Đã đăng nhập',
   manual: 'Cần xử lý',
   error: 'Lỗi đăng nhập',
-  recaptcha: 'Giải reCAPTCHA…'
+  recaptcha: 'Giải reCAPTCHA…',
+  passkey_enabled: 'Đã bật Passkey',
+  passkey_creating: 'Đang tạo Passkey…'
 };
 
 const render = window.uiTrace('renderer.render', function (data = state) {
@@ -313,7 +326,7 @@ const render = window.uiTrace('renderer.render', function (data = state) {
   $('chromeDot').classList.toggle('ready', Boolean(state.chromePath));
   const query = $('search').value.trim().toLocaleLowerCase('vi');
   const visible = profiles.filter(p =>
-    [p.name, p.email, p.recoveryMail, p.notes, p.notes2, p.mailError, mailLabels[p.mailStatus]].some(value => String(value || '').toLocaleLowerCase('vi').includes(query))).slice();
+    [p.name, p.email, p.recoveryMail, p.notes, p.notes2, p.passkey, p.mailError, mailLabels[p.mailStatus]].some(value => String(value || '').toLocaleLowerCase('vi').includes(query))).slice();
   const order = new Map(profiles.map((p, index) => [p.id, index + 1]));
   visible.sort((a, b) => {
     const value = p => sortKey === 'stt' ? order.get(p.id) : sortKey === 'updatedAt' ? p.updatedAt || p.lastOpenedAt || p.createdAt : p[sortKey] || '';
@@ -366,8 +379,8 @@ const render = window.uiTrace('renderer.render', function (data = state) {
     status.setAttribute('aria-label', status.title);
     email.textContent = p.email || p.name;
     const isError = Boolean(p.mailError) || ['error', 'rejected', 'verify_phone'].includes(p.mailStatus);
-    const isSuccess = p.mailStatus === 'success';
-    const isProgress = ['starting', 'email', 'password', 'recovery', 'totp', 'selection', 'skotp', 'recaptcha', 'inbox'].includes(p.mailStatus);
+    const isSuccess = p.mailStatus === 'success' || p.mailStatus === 'passkey_enabled';
+    const isProgress = ['starting', 'email', 'password', 'recovery', 'totp', 'selection', 'skotp', 'recaptcha', 'inbox', 'passkey_creating'].includes(p.mailStatus);
     const statusClass = isError ? ' status-error' : (isSuccess ? ' status-success' : (isProgress ? ' status-progress' : ''));
     const displayText = p.mailError || mailLabels[p.mailStatus] || '—';
     const mailStatus = element('td', `mail-status${statusClass}`, displayText);
@@ -408,7 +421,8 @@ const render = window.uiTrace('renderer.render', function (data = state) {
     proxy.title = p.fingerprint.proxyUrl || 'Không cấu hình proxy';
     created.textContent = dateFormatter.format(new Date(p.updatedAt || p.lastOpenedAt || p.createdAt));
     row.append(selection, element('td', '', order.get(p.id)), status, mailStatus, email,
-      accountCell('password', true), accountCell('recoveryMail'), accountCell('twofa', true), accountCell('securityCode', true), proxy,
+      accountCell('password', true), accountCell('recoveryMail'), accountCell('twofa', true), accountCell('securityCode', true),
+      accountCell('passkey', true), proxy,
       noteCell('notes'), noteCell('notes2'), created);
     fragment.append(row);
   }
@@ -600,5 +614,403 @@ $('fingerprintForm').addEventListener('submit', window.uiTrace('renderer.saveFin
   } catch (error) { $('fingerprintError').textContent = error.message; $('fingerprintError').hidden = false; }
   finally { fingerprintBusy = false; controls.forEach(c => { c.disabled = c.name === 'resolution' || Boolean(c.closest('.custom-window-size')?.hidden); }); }
 }));
+// GCP Ads Settings Dialog
+$('openGcpSettings').addEventListener('click', async () => {
+  $('gcpSettingsError').hidden = true;
+  $('gcpSettingsDialog').showModal();
+  $('gcpSettingsSave').disabled = true;
+  $('gcpSettingsSave').textContent = 'Đang đồng bộ Firebase…';
+  try {
+    const config = await window.googleTool.getGcpAdsConfig();
+    $('gcpClientId').value = config.clientId || '';
+    $('gcpClientSecret').value = config.clientSecret || '';
+    $('gcpDeveloperToken').value = config.developerToken || '';
+    $('gcpRefreshToken').value = config.refreshToken || '';
+    $('gcpLoginCustomerId').value = config.loginCustomerId || '';
+    ['gcpClientSecret', 'gcpDeveloperToken', 'gcpRefreshToken'].forEach(id => {
+      const input = $(id);
+      if (input) input.type = 'password';
+      const btn = document.querySelector(`.toggle-password-btn[data-target="${id}"]`);
+      if (btn) {
+        btn.replaceChildren(icon('eye'));
+      }
+    });
+  } catch (error) {
+    toast(error.message, true);
+  } finally {
+    $('gcpSettingsSave').disabled = false;
+    $('gcpSettingsSave').textContent = 'Lưu cài đặt';
+  }
+});
+
+const closeGcpSettings = () => $('gcpSettingsDialog').close();
+$('closeGcpSettings').addEventListener('click', closeGcpSettings);
+$('gcpSettingsCancel').addEventListener('click', closeGcpSettings);
+
+document.querySelectorAll('.toggle-password-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const targetId = btn.dataset.target;
+    const input = $(targetId);
+    if (!input) return;
+    const isPassword = input.type === 'password';
+    input.type = isPassword ? 'text' : 'password';
+    btn.replaceChildren(icon(isPassword ? 'eye-off' : 'eye'));
+  });
+});
+
+$('gcpUploadJson').addEventListener('click', () => {
+  $('gcpJsonFile').click();
+});
+
+$('gcpJsonFile').addEventListener('change', event => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      const oauth = data.installed || data.web || data;
+      if (oauth.client_id) $('gcpClientId').value = oauth.client_id;
+      if (oauth.client_secret) $('gcpClientSecret').value = oauth.client_secret;
+      if (data.developer_token || data.developerToken) $('gcpDeveloperToken').value = data.developer_token || data.developerToken;
+      if (data.refresh_token || data.refreshToken) $('gcpRefreshToken').value = data.refresh_token || data.refreshToken;
+      if (data.login_customer_id || data.loginCustomerId) $('gcpLoginCustomerId').value = data.login_customer_id || data.loginCustomerId;
+      toast('Đã nạp thông tin từ file JSON.');
+    } catch {
+      toast('Không thể đọc file JSON hợp lệ.', true);
+    } finally {
+      $('gcpJsonFile').value = '';
+    }
+  };
+  reader.readAsText(file);
+});
+
+$('gcpSettingsForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  const clientId = $('gcpClientId').value.trim();
+  const clientSecret = $('gcpClientSecret').value.trim();
+  const developerToken = $('gcpDeveloperToken').value.trim();
+  const refreshToken = $('gcpRefreshToken').value.trim();
+  const loginCustomerId = $('gcpLoginCustomerId').value.trim();
+
+  $('gcpSettingsSave').disabled = true;
+  $('gcpSettingsSave').textContent = 'Đang lưu lên Firebase…';
+  try {
+    await window.googleTool.saveGcpAdsConfig({
+      clientId,
+      clientSecret,
+      developerToken,
+      refreshToken,
+      loginCustomerId,
+    });
+    $('gcpSettingsDialog').close();
+    toast('Đã lưu cài đặt và đồng bộ lên Firebase thành công.');
+  } catch (error) {
+    $('gcpSettingsError').textContent = error.message;
+    $('gcpSettingsError').hidden = false;
+  } finally {
+    $('gcpSettingsSave').disabled = false;
+    $('gcpSettingsSave').textContent = 'Lưu cài đặt';
+  }
+});
+
+// Dialog Tạo link đăng nhập Ads
+$('btnAdsLoginLink').addEventListener('click', async () => {
+  $('adsLinkError').hidden = true;
+  $('adsLinkSuccess').hidden = true;
+  $('adsAuthCodeInput').value = '';
+  $('adsOauthUrl').value = 'Đang tạo link…';
+  $('adsLinkDialog').showModal();
+  try {
+    const res = await window.googleTool.getGcpAdsAuthLink();
+    $('adsOauthUrl').value = res.url;
+  } catch (error) {
+    $('adsOauthUrl').value = '';
+    $('adsLinkError').textContent = error.message;
+    $('adsLinkError').hidden = false;
+  }
+});
+
+const closeAdsLink = () => $('adsLinkDialog').close();
+$('closeAdsLink').addEventListener('click', closeAdsLink);
+$('cancelAdsLink').addEventListener('click', closeAdsLink);
+
+$('btnCopyAdsLink').addEventListener('click', async () => {
+  const url = $('adsOauthUrl').value;
+  if (!url) return;
+  try {
+    await navigator.clipboard.writeText(url);
+    toast('Đã sao chép link đăng nhập Ads.');
+  } catch {
+    $('adsOauthUrl').select();
+    document.execCommand('copy');
+    toast('Đã sao chép link đăng nhập Ads.');
+  }
+});
+
+$('btnOpenAdsLink').addEventListener('click', async () => {
+  const url = $('adsOauthUrl').value;
+  if (!url) return;
+  try {
+    await window.googleTool.openExternal(url);
+  } catch (error) {
+    toast(error.message, true);
+  }
+});
+
+$('btnExchangeAdsCode').addEventListener('click', async () => {
+  const codeOrUrl = $('adsAuthCodeInput').value.trim();
+  if (!codeOrUrl) {
+    $('adsLinkError').textContent = 'Vui lòng dán URL chuyển hướng hoặc mã Authorization Code.';
+    $('adsLinkError').hidden = false;
+    return;
+  }
+  $('adsLinkError').hidden = true;
+  $('adsLinkSuccess').hidden = true;
+  $('btnExchangeAdsCode').disabled = true;
+  $('btnExchangeAdsCode').textContent = 'Đang đổi token…';
+  try {
+    await window.googleTool.exchangeGcpAdsCode({ codeOrUrl });
+    $('adsLinkSuccess').textContent = '✅ Đã đổi mã code lấy Refresh Token và lưu thành công vào Cài đặt GCP & Firebase!';
+    $('adsLinkSuccess').hidden = false;
+    toast('Đã cập nhật Refresh Token thành công.');
+  } catch (error) {
+    $('adsLinkError').textContent = error.message;
+    $('adsLinkError').hidden = false;
+  } finally {
+    $('btnExchangeAdsCode').disabled = false;
+    $('btnExchangeAdsCode').textContent = 'Đổi Refresh Token & Lưu';
+  }
+});
+
+// Dialog Xác minh tài khoản Google Ads (Quét MCC)
+let currentSelectedProfilesForVerify = [];
+let currentScannedVerifyAccounts = [];
+
+const openVerifyAdsModal = window.uiTrace('renderer.openVerifyAdsModal', async () => {
+  currentSelectedProfilesForVerify = [...selected];
+  $('verifyAdsError').hidden = true;
+  $('verifyAdsSuccess').hidden = true;
+  $('verifyAdsResults').hidden = true;
+  $('verifyAdsLoading').style.display = 'none';
+
+  const selectEl = $('verifyProfileSelect');
+  if (selectEl) {
+    selectEl.innerHTML = '';
+    const profileList = state?.profiles || [];
+    if (profileList.length > 0) {
+      profileList.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = `${p.name || 'Profile'} ${p.email ? `(${p.email})` : ''}`;
+        selectEl.appendChild(opt);
+      });
+      if (currentSelectedProfilesForVerify.length > 0) {
+        selectEl.value = currentSelectedProfilesForVerify[0];
+      }
+    } else {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = '-- Chưa có profile nào trong danh sách --';
+      selectEl.appendChild(opt);
+    }
+  }
+
+  try {
+    const config = await window.googleTool.getGcpAdsConfig();
+    if (config && config.loginCustomerId && !$('mccIdInput').value) {
+      $('mccIdInput').value = config.loginCustomerId;
+    }
+  } catch (_) {}
+
+  $('verifyAdsDialog').showModal();
+});
+
+const closeVerifyAds = window.uiTrace('renderer.closeVerifyAds', () => $('verifyAdsDialog').close());
+$('closeVerifyAds').addEventListener('click', closeVerifyAds);
+$('cancelVerifyAds').addEventListener('click', closeVerifyAds);
+
+$('mccIdInput').addEventListener('keydown', event => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    $('btnScanMcc').click();
+  }
+});
+
+$('btnScanMcc').addEventListener('click', window.uiTrace('renderer.scanMccVerification', async () => {
+  const mccId = $('mccIdInput').value.trim();
+  if (!mccId) {
+    $('verifyAdsError').textContent = 'Vui lòng nhập ID MCC (10 chữ số).';
+    $('verifyAdsError').hidden = false;
+    return;
+  }
+
+  $('verifyAdsError').hidden = true;
+  $('verifyAdsSuccess').hidden = true;
+  $('verifyAdsResults').hidden = true;
+  $('verifyAdsLoading').style.display = 'flex';
+  $('verifyAdsLoadingText').textContent = `Đang kết nối Google Ads API và quét danh sách tài khoản trong MCC ${mccId}…`;
+  $('btnScanMcc').disabled = true;
+
+  try {
+    const res = await window.googleTool.scanMccVerification(mccId);
+    currentScannedVerifyAccounts = res.needingVerification || [];
+
+    const total = res.totalAccounts || 0;
+    const needCount = currentScannedVerifyAccounts.length;
+
+    $('verifyAdsSummary').textContent = `Kết quả: Tìm thấy ${needCount} tài khoản cần xác minh / Tổng số ${total} tài khoản trong MCC ${res.formattedMccId}.`;
+
+    const tbody = $('verifyAdsTableBody');
+    tbody.innerHTML = '';
+
+    if (needCount === 0) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td colspan="4" style="padding: 16px; text-align: center; color: #188038; font-weight: 500;">
+        🎉 Tất cả tài khoản trong MCC đều đã xác minh hoặc không có yêu cầu xác minh lúc này.
+      </td>`;
+      tbody.appendChild(tr);
+    } else {
+      currentScannedVerifyAccounts.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid #edf0f5';
+
+        let badgeClass = 'badge-verify-action';
+        if (item.status === 'PENDING_REVIEW') badgeClass = 'badge-verify-review';
+        else if (item.status === 'SUCCESS' || item.status === 'NOT_REQUIRED') badgeClass = 'badge-verify-ok';
+
+        tr.innerHTML = `
+          <td style="padding: 8px 10px; font-weight: 600; color: #25314a;">${item.formattedId}</td>
+          <td style="padding: 8px 10px; color: #475674; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${item.name}">${item.name}</td>
+          <td style="padding: 8px 10px;"><span class="${badgeClass}">${item.statusText}</span></td>
+          <td style="padding: 8px 10px; text-align: right; white-space: nowrap;">
+            <button type="button" class="button primary small btn-verify-one" data-url="${item.actionUrl}" data-id="${item.formattedId}" style="padding: 4px 10px; font-size: 11px; margin-right: 4px; font-weight: 600;" title="Xác minh tài khoản này">
+              <svg style="width: 12px; height: 12px; vertical-align: -1px; margin-right: 2px;"><use href="#i-check"/></svg> Verify
+            </button>
+            <button type="button" class="button secondary small btn-copy-one-verify" data-url="${item.actionUrl}" style="padding: 4px 8px; font-size: 11px; margin-right: 4px;" title="Copy link xác minh">
+              <svg style="width: 12px; height: 12px;"><use href="#i-copy"/></svg> Copy
+            </button>
+            <button type="button" class="button secondary small btn-open-one-verify" data-url="${item.actionUrl}" style="padding: 4px 8px; font-size: 11px;" title="Mở link trên trình duyệt mặc định">
+              <svg style="width: 12px; height: 12px;"><use href="#i-external"/></svg> Mở
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    const btnBatch = $('btnOpenSelectedProfilesVerify');
+    if (currentScannedVerifyAccounts.length > 0) {
+      btnBatch.hidden = false;
+      const count = Math.min(currentSelectedProfilesForVerify.length, currentScannedVerifyAccounts.length);
+      if (currentSelectedProfilesForVerify.length > 0) {
+        btnBatch.querySelector('span').textContent = `Verify trên ${count} profile đã chọn`;
+      } else {
+        btnBatch.querySelector('span').textContent = `Verify tất cả link (${currentScannedVerifyAccounts.length})`;
+      }
+    } else {
+      btnBatch.hidden = true;
+    }
+
+    $('verifyAdsResults').hidden = false;
+  } catch (error) {
+    $('verifyAdsError').textContent = error.message;
+    $('verifyAdsError').hidden = false;
+  } finally {
+    $('verifyAdsLoading').style.display = 'none';
+    $('btnScanMcc').disabled = false;
+  }
+}));
+
+$('btnCopyAllVerifyLinks').addEventListener('click', window.uiTrace('renderer.copyAllVerifyLinks', async () => {
+  if (!currentScannedVerifyAccounts || !currentScannedVerifyAccounts.length) {
+    toast('Không có tài khoản nào để copy.', true);
+    return;
+  }
+  const lines = currentScannedVerifyAccounts.map(a => `${a.formattedId}\t${a.name}\t${a.actionUrl}`);
+  const ok = await copyTextToClipboard(lines.join('\n'));
+  if (ok) {
+    toast(`Đã sao chép link xác minh của ${currentScannedVerifyAccounts.length} tài khoản.`);
+  } else {
+    toast('Không thể sao chép vào clipboard.', true);
+  }
+}));
+
+$('verifyAdsTableBody').addEventListener('click', window.uiTrace('renderer.tableVerifyActions', async event => {
+  const verifyBtn = event.target.closest('.btn-verify-one');
+  if (verifyBtn) {
+    const url = verifyBtn.dataset.url;
+    const id = verifyBtn.dataset.id;
+    if (!url) return;
+
+    const chosenProfileId = $('verifyProfileSelect')?.value || currentSelectedProfilesForVerify[0];
+    if (chosenProfileId) {
+      try {
+        toast(`Đang mở window xác minh riêng cho ${id}...`);
+        await window.googleTool.verifyAds(chosenProfileId, url);
+      } catch (err) {
+        toast(err.message, true);
+      }
+    } else {
+      try {
+        toast(`Đang mở link xác minh tài khoản ${id}...`);
+        await window.googleTool.openExternal(url);
+      } catch (err) {
+        toast(err.message, true);
+      }
+    }
+    return;
+  }
+
+  const copyBtn = event.target.closest('.btn-copy-one-verify');
+  if (copyBtn) {
+    const url = copyBtn.dataset.url;
+    if (url) {
+      const ok = await copyTextToClipboard(url);
+      toast(ok ? 'Đã sao chép link xác minh.' : 'Lỗi khi sao chép.', !ok);
+    }
+    return;
+  }
+
+  const openBtn = event.target.closest('.btn-open-one-verify');
+  if (openBtn) {
+    const url = openBtn.dataset.url;
+    if (url) {
+      try {
+        await window.googleTool.openExternal(url);
+      } catch (err) {
+        toast(err.message, true);
+      }
+    }
+    return;
+  }
+}));
+
+$('btnOpenSelectedProfilesVerify').addEventListener('click', window.uiTrace('renderer.openSelectedProfilesVerify', async () => {
+  if (!currentScannedVerifyAccounts.length) return;
+  const btn = $('btnOpenSelectedProfilesVerify');
+  btn.disabled = true;
+  const chosenProfileId = $('verifyProfileSelect')?.value || currentSelectedProfilesForVerify[0];
+  try {
+    if (chosenProfileId) {
+      const urls = currentScannedVerifyAccounts.map(a => a.actionUrl);
+      toast(`Đang mở ${urls.length} window riêng biệt và sắp xếp theo chiều ngang...`);
+      await window.googleTool.verifyAdsBatch(chosenProfileId, urls);
+      toast(`Đã mở ${urls.length} window xác minh xếp ngang thành công.`);
+      $('verifyAdsDialog').close();
+    } else {
+      for (const acc of currentScannedVerifyAccounts) {
+        await window.googleTool.openExternal(acc.actionUrl);
+      }
+      toast(`Đã mở tất cả ${currentScannedVerifyAccounts.length} link xác minh trên trình duyệt.`);
+      $('verifyAdsDialog').close();
+    }
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+}));
+
 init();
 

@@ -116,7 +116,7 @@ class ProfileStore {
 
   setMailStatus = trace.traced('store.setMailStatus', (id, mailStatus, mailError = null) => {
     this.get(id);
-    const allowed = ['starting', 'email', 'password', 'password_reached', 'recovery', 'totp', 'selection', 'inbox', 'success', 'manual', 'error', 'recaptcha', 'skotp', 'verify_phone', 'rejected'];
+    const allowed = ['starting', 'email', 'password', 'password_reached', 'recovery', 'totp', 'selection', 'inbox', 'success', 'manual', 'error', 'recaptcha', 'skotp', 'verify_phone', 'rejected', 'passkey_enabled'];
     if (!allowed.includes(mailStatus)) throw new Error('Trạng thái Gmail không hợp lệ.');
     const errorString = typeof mailError === 'string' && mailError.trim()
       ? mailError.trim().slice(0, 500)
