@@ -4,5 +4,16 @@
   "version": "2.0.0-dev.2",
   "private": true,
   "description": "Quản lý profile Chromium 151 với cấu hình GPU và fingerprint riêng",
-  "main": "main.js"
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test tests/*.test.js"
+  },
+  "dependencies": {
+    "puppeteer-core": "^2.1.1",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0"
+  }
 }
