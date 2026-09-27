@@ -202,7 +202,7 @@ document.querySelectorAll('[data-action]').forEach(button => button.addEventList
   selectedAction = button.dataset.action;
   $('actionButton').textContent = `${button.textContent} ▾`;
   closeActionMenu(); updateSelection(); $('actionButton').focus();
-  if (selectedAction === 'verify-ads' || runImmediately) $('runAction').click();
+  if (selectedAction === 'verify-ads' || selectedAction === 'appeal-ads' || runImmediately) $('runAction').click();
 }));
 document.querySelectorAll('[data-copy]').forEach(button => button.addEventListener('click', async event => {
   event.stopPropagation();
@@ -215,12 +215,12 @@ document.addEventListener('keydown', event => { if (event.key === 'Escape' && !$
 window.addEventListener('resize', closeActionMenu);
 document.querySelector('.table-wrap').addEventListener('scroll', closeActionMenu);
 $('runAction').addEventListener('click', window.uiTrace('renderer.runAction', async () => {
-  if (actionBusy || !selected.size || !['open', 'delete', 'login-gmail', 'enable-passkey', 'verify-ads'].includes(selectedAction)) return;
+  if (actionBusy || !selected.size || !['open', 'delete', 'login-gmail', 'enable-passkey', 'verify-ads', 'appeal-ads'].includes(selectedAction)) return;
   const ids = [...selected];
   const action = selectedAction;
-  if (action === 'verify-ads') {
+  if (action === 'verify-ads' || action === 'appeal-ads') {
     closeActionMenu();
-    openVerifyAdsModal();
+    openVerifyAdsModal(action === 'appeal-ads' ? 'appeal' : 'verify');
     return;
   }
   if (['open', 'login-gmail', 'enable-passkey'].includes(action) && !$('threadLimit').reportValidity()) return;
@@ -228,7 +228,7 @@ $('runAction').addEventListener('click', window.uiTrace('renderer.runAction', as
   let completed = 0, skipped = 0;
   const errors = [];
   try {
-    if (action === 'open' || action === 'login-gmail' || action === 'enable-passkey' || action === 'verify-ads') {
+    if (['open', 'login-gmail', 'enable-passkey', 'verify-ads'].includes(action)) {
       const result = await window.googleTool.openProfiles({ ids, limit: Number($('threadLimit').value), action });
       const actionName = action === 'login-gmail' ? 'Login gmail' : action === 'enable-passkey' ? 'bật Passkey' : action === 'verify-ads' ? 'xác minh Ads' : 'mở';
       toast(`Đã thêm ${result.added} profile vào hàng đợi ${actionName}.`);
@@ -303,12 +303,12 @@ const mailLabels = {
   totp: 'Authenticator…',
   selection: 'Chọn xác minh…',
   skotp: 'Security Code…',
-  verify_phone: 'Xác minh SĐT',
-  rejected: 'Bị từ chối',
+  verify_phone: 'Verify Phone',
+  rejected: 'Rejected',
   inbox: 'Đang vào Gmail…',
-  success: 'Đã đăng nhập',
-  manual: 'Cần xử lý',
-  error: 'Lỗi đăng nhập',
+  success: 'Success',
+  manual: 'Manual',
+  error: 'Error',
   recaptcha: 'Giải reCAPTCHA…',
   passkey_enabled: 'Đã bật Passkey',
   passkey_creating: 'Đang tạo Passkey…'
@@ -326,7 +326,7 @@ const render = window.uiTrace('renderer.render', function (data = state) {
   $('chromeDot').classList.toggle('ready', Boolean(state.chromePath));
   const query = $('search').value.trim().toLocaleLowerCase('vi');
   const visible = profiles.filter(p =>
-    [p.name, p.email, p.recoveryMail, p.notes, p.notes2, p.passkey, p.mailError, mailLabels[p.mailStatus]].some(value => String(value || '').toLocaleLowerCase('vi').includes(query))).slice();
+    [p.name, p.email, p.recoveryMail, p.notes, p.notes2, p.passkey, p.mailError, mailLabels[p.mailStatus], !p.mailStatus ? 'NEW' : ''].some(value => String(value || '').toLocaleLowerCase('vi').includes(query))).slice();
   const order = new Map(profiles.map((p, index) => [p.id, index + 1]));
   visible.sort((a, b) => {
     const value = p => sortKey === 'stt' ? order.get(p.id) : sortKey === 'updatedAt' ? p.updatedAt || p.lastOpenedAt || p.createdAt : p[sortKey] || '';
@@ -378,11 +378,11 @@ const render = window.uiTrace('renderer.render', function (data = state) {
     status.title = p.running ? 'Đang mở' : 'Chưa mở';
     status.setAttribute('aria-label', status.title);
     email.textContent = p.email || p.name;
-    const isError = Boolean(p.mailError) || ['error', 'rejected', 'verify_phone'].includes(p.mailStatus);
+    const isError = Boolean(p.mailError) || ['error', 'rejected', 'verify_phone', 'manual'].includes(p.mailStatus);
     const isSuccess = p.mailStatus === 'success' || p.mailStatus === 'passkey_enabled';
     const isProgress = ['starting', 'email', 'password', 'recovery', 'totp', 'selection', 'skotp', 'recaptcha', 'inbox', 'passkey_creating'].includes(p.mailStatus);
     const statusClass = isError ? ' status-error' : (isSuccess ? ' status-success' : (isProgress ? ' status-progress' : ''));
-    const displayText = p.mailError || mailLabels[p.mailStatus] || '—';
+    const displayText = (p.mailStatus && mailLabels[p.mailStatus]) ? mailLabels[p.mailStatus] : (p.mailError || 'NEW');
     const mailStatus = element('td', `mail-status${statusClass}`, displayText);
     mailStatus.title = p.mailError ? `Lỗi: ${p.mailError}` : (mailLabels[p.mailStatus] || 'Chưa kiểm tra đăng nhập Gmail');
     const accountCell = (key, secret = false) => {
@@ -614,95 +614,134 @@ $('fingerprintForm').addEventListener('submit', window.uiTrace('renderer.saveFin
   } catch (error) { $('fingerprintError').textContent = error.message; $('fingerprintError').hidden = false; }
   finally { fingerprintBusy = false; controls.forEach(c => { c.disabled = c.name === 'resolution' || Boolean(c.closest('.custom-window-size')?.hidden); }); }
 }));
-// GCP Ads Settings Dialog
+// Settings Dialog — danh sách server GCP (Ads API)
+const GCP_FIELDS = ['clientId', 'clientSecret', 'developerToken', 'refreshToken'];
+let gcpCardSeq = 0;
+const newGcpServerId = () => `gcp-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+const gcpCards = () => [...$('gcpServerList').querySelectorAll('.gcp-server-card')];
+const gcpActiveRadio = card => card.querySelector('.gcp-server-active input');
+
+function refreshGcpServerList() {
+  const cards = gcpCards();
+  $('gcpServerEmpty').hidden = cards.length > 0;
+  if (cards.length && !cards.some(card => gcpActiveRadio(card).checked)) gcpActiveRadio(cards[0]).checked = true;
+}
+
+function addGcpServerCard(server, active) {
+  const card = $('gcpServerTemplate').content.firstElementChild.cloneNode(true);
+  const uid = ++gcpCardSeq;
+  card.dataset.id = server.id;
+  card.querySelector('[data-field="name"]').value = server.name || '';
+  GCP_FIELDS.forEach(field => {
+    const input = card.querySelector(`[data-field="${field}"]`);
+    input.id = `gcp-${field}-${uid}`;
+    input.value = server[field] || '';
+  });
+  card.querySelectorAll('label[data-for]').forEach(label => { label.htmlFor = `gcp-${label.dataset.for}-${uid}`; });
+  const radio = gcpActiveRadio(card);
+  radio.value = server.id;
+  radio.checked = Boolean(active);
+  $('gcpServerList').append(card);
+  refreshGcpServerList();
+  return card;
+}
+
+function readGcpServerCard(card, index) {
+  const server = { id: card.dataset.id, name: card.querySelector('[data-field="name"]').value.trim() || `GCP ${index + 1}` };
+  GCP_FIELDS.forEach(field => { server[field] = card.querySelector(`[data-field="${field}"]`).value.trim(); });
+  return server;
+}
+
 $('openGcpSettings').addEventListener('click', async () => {
   $('gcpSettingsError').hidden = true;
+  $('gcpServerList').replaceChildren();
+  $('gcpServerEmpty').hidden = true;
   $('gcpSettingsDialog').showModal();
   $('gcpSettingsSave').disabled = true;
   $('gcpSettingsSave').textContent = 'Đang đồng bộ Firebase…';
   try {
-    const config = await window.googleTool.getGcpAdsConfig();
-    $('gcpClientId').value = config.clientId || '';
-    $('gcpClientSecret').value = config.clientSecret || '';
-    $('gcpDeveloperToken').value = config.developerToken || '';
-    $('gcpRefreshToken').value = config.refreshToken || '';
-    $('gcpLoginCustomerId').value = config.loginCustomerId || '';
-    ['gcpClientSecret', 'gcpDeveloperToken', 'gcpRefreshToken'].forEach(id => {
-      const input = $(id);
-      if (input) input.type = 'password';
-      const btn = document.querySelector(`.toggle-password-btn[data-target="${id}"]`);
-      if (btn) {
-        btn.replaceChildren(icon('eye'));
-      }
-    });
+    const data = await window.googleTool.getGcpAdsServers();
+    data.servers.forEach(server => addGcpServerCard(server, server.id === data.activeId));
+    if (!data.servers.length) addGcpServerCard({ id: newGcpServerId(), name: 'GCP 1' }, true);
   } catch (error) {
     toast(error.message, true);
+    refreshGcpServerList();
   } finally {
     $('gcpSettingsSave').disabled = false;
     $('gcpSettingsSave').textContent = 'Lưu cài đặt';
   }
 });
 
-const closeGcpSettings = () => $('gcpSettingsDialog').close();
-$('closeGcpSettings').addEventListener('click', closeGcpSettings);
-$('gcpSettingsCancel').addEventListener('click', closeGcpSettings);
+// Pool worker: ô trạng thái trên thanh trên cùng + bảng cấu hình trong dialog Cài đặt (chỉ poll khi dialog mở)
+window.poolApi.setPoolBase('/api/pool'); // khớp prefix ở main process
+window.mountPoolStatus($('poolStatus'));
+const poolPanel = window.createPoolPanel($('poolPanel'));
+$('openGcpSettings').addEventListener('click', poolPanel.start);
+$('gcpSettingsDialog').addEventListener('close', poolPanel.stop);
 
-document.querySelectorAll('.toggle-password-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const targetId = btn.dataset.target;
-    const input = $(targetId);
-    if (!input) return;
-    const isPassword = input.type === 'password';
-    input.type = isPassword ? 'text' : 'password';
-    btn.replaceChildren(icon(isPassword ? 'eye-off' : 'eye'));
-  });
+$('gcpAddServer').addEventListener('click', () => {
+  const card = addGcpServerCard({ id: newGcpServerId(), name: `GCP ${gcpCards().length + 1}` }, false);
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  card.querySelector('[data-field="clientId"]').focus({ preventScroll: true });
 });
 
-$('gcpUploadJson').addEventListener('click', () => {
-  $('gcpJsonFile').click();
+$('gcpServerList').addEventListener('click', event => {
+  const card = event.target.closest('.gcp-server-card');
+  if (!card) return;
+  if (event.target.closest('.gcp-server-remove')) {
+    card.remove();
+    refreshGcpServerList();
+    return;
+  }
+  if (event.target.closest('.gcp-upload-json')) card.querySelector('.gcp-json-file').click();
 });
 
-$('gcpJsonFile').addEventListener('change', event => {
-  const file = event.target.files?.[0];
+$('gcpServerList').addEventListener('change', event => {
+  const fileInput = event.target.closest('.gcp-json-file');
+  const file = fileInput?.files?.[0];
   if (!file) return;
+  const card = fileInput.closest('.gcp-server-card');
+  const setField = (field, value) => { if (value) card.querySelector(`[data-field="${field}"]`).value = value; };
   const reader = new FileReader();
   reader.onload = e => {
     try {
       const data = JSON.parse(e.target.result);
       const oauth = data.installed || data.web || data;
-      if (oauth.client_id) $('gcpClientId').value = oauth.client_id;
-      if (oauth.client_secret) $('gcpClientSecret').value = oauth.client_secret;
-      if (data.developer_token || data.developerToken) $('gcpDeveloperToken').value = data.developer_token || data.developerToken;
-      if (data.refresh_token || data.refreshToken) $('gcpRefreshToken').value = data.refresh_token || data.refreshToken;
-      if (data.login_customer_id || data.loginCustomerId) $('gcpLoginCustomerId').value = data.login_customer_id || data.loginCustomerId;
-      toast('Đã nạp thông tin từ file JSON.');
+      setField('clientId', oauth.client_id);
+      setField('clientSecret', oauth.client_secret);
+      setField('developerToken', data.developer_token || data.developerToken);
+      setField('refreshToken', data.refresh_token || data.refreshToken);      toast('Đã nạp thông tin từ file JSON.');
     } catch {
       toast('Không thể đọc file JSON hợp lệ.', true);
     } finally {
-      $('gcpJsonFile').value = '';
+      fileInput.value = '';
     }
   };
   reader.readAsText(file);
 });
 
+const closeGcpSettings = () => $('gcpSettingsDialog').close();
+$('closeGcpSettings').addEventListener('click', closeGcpSettings);
+$('gcpSettingsCancel').addEventListener('click', closeGcpSettings);
+
 $('gcpSettingsForm').addEventListener('submit', async event => {
   event.preventDefault();
-  const clientId = $('gcpClientId').value.trim();
-  const clientSecret = $('gcpClientSecret').value.trim();
-  const developerToken = $('gcpDeveloperToken').value.trim();
-  const refreshToken = $('gcpRefreshToken').value.trim();
-  const loginCustomerId = $('gcpLoginCustomerId').value.trim();
+  const cards = gcpCards();
+  const servers = cards.map(readGcpServerCard);
+  const missing = servers.findIndex(server => !server.clientId);
+  if (missing >= 0) {
+    $('gcpSettingsError').textContent = `Server "${servers[missing].name}" chưa có Client ID.`;
+    $('gcpSettingsError').hidden = false;
+    cards[missing].querySelector('[data-field="clientId"]').focus();
+    return;
+  }
+  const activeCard = cards.find(card => gcpActiveRadio(card).checked);
+  $('gcpSettingsError').hidden = true;
 
   $('gcpSettingsSave').disabled = true;
   $('gcpSettingsSave').textContent = 'Đang lưu lên Firebase…';
   try {
-    await window.googleTool.saveGcpAdsConfig({
-      clientId,
-      clientSecret,
-      developerToken,
-      refreshToken,
-      loginCustomerId,
-    });
+    await window.googleTool.saveGcpAdsServers({ activeId: activeCard?.dataset.id || '', servers });
     $('gcpSettingsDialog').close();
     toast('Đã lưu cài đặt và đồng bộ lên Firebase thành công.');
   } catch (error) {
@@ -770,8 +809,8 @@ $('btnExchangeAdsCode').addEventListener('click', async () => {
   $('btnExchangeAdsCode').disabled = true;
   $('btnExchangeAdsCode').textContent = 'Đang đổi token…';
   try {
-    await window.googleTool.exchangeGcpAdsCode({ codeOrUrl });
-    $('adsLinkSuccess').textContent = '✅ Đã đổi mã code lấy Refresh Token và lưu thành công vào Cài đặt GCP & Firebase!';
+    const res = await window.googleTool.exchangeGcpAdsCode({ codeOrUrl });
+    $('adsLinkSuccess').textContent = `✅ Đã đổi mã code lấy Refresh Token và lưu thành công vào server GCP "${res.serverName || ''}" & Firebase!`;
     $('adsLinkSuccess').hidden = false;
     toast('Đã cập nhật Refresh Token thành công.');
   } catch (error) {
@@ -783,11 +822,90 @@ $('btnExchangeAdsCode').addEventListener('click', async () => {
   }
 });
 
-// Dialog Xác minh tài khoản Google Ads (Quét MCC)
+// Dialog Quét MCC — dùng chung cho "Xác minh tài khoản ads" (verify) và "Kháng" (appeal)
 let currentSelectedProfilesForVerify = [];
 let currentScannedVerifyAccounts = [];
+const VERIFY_MODES = {
+  verify: {
+    title: 'Xác minh tài khoản Google Ads',
+    subtitle: 'Chọn tài khoản quản lý (MCC) để quét danh sách các tài khoản con cần xác minh danh tính nhà quảng cáo (Advertiser Verification).',
+    help: 'Danh sách MCC gồm các MCC mà tài khoản Google của server GCP đang dùng (trong Cài đặt) truy cập trực tiếp, lấy qua Google Ads API.',
+    scan: mccId => window.googleTool.scanMccVerification(mccId),
+    list: res => res.needingVerification || [],
+    summary: (count, total, mcc, res) => {
+      const list = res.needingVerification || [];
+      const live = list.filter(a => a.accountStatus === 'ENABLED').length;
+      const suspended = list.filter(a => a.accountStatus === 'SUSPENDED').length;
+      return `Kết quả: Tìm thấy ${count} tài khoản cần xác minh (${live} Live, ${suspended} Suspend) / Tổng số ${total} tài khoản trong MCC ${mcc}${res.skippedCount ? `, bỏ qua ${res.skippedCount} tài khoản đã hủy/đóng` : ''}.`;
+    },
+    empty: '🎉 Tất cả tài khoản trong MCC đều đã xác minh hoặc không có yêu cầu xác minh lúc này.',
+    verb: 'Verify', noun: 'xác minh',
+  },
+  appeal: {
+    title: 'Kháng tài khoản Google Ads bị tạm ngưng',
+    subtitle: 'Chọn tài khoản quản lý (MCC) để quét danh sách các tài khoản con đang bị tạm ngưng (Suspended) và mở từng tài khoản để gửi kháng nghị.',
+    help: 'Danh sách MCC gồm các MCC mà tài khoản Google của server GCP đang dùng (trong Cài đặt) truy cập trực tiếp, lấy qua Google Ads API.',
+    scan: mccId => window.googleTool.scanMccSuspended(mccId),
+    list: res => res.suspended || [],
+    summary: (count, total, mcc) => `Kết quả: Tìm thấy ${count} tài khoản bị tạm ngưng / Tổng số ${total} tài khoản trong MCC ${mcc}.`,
+    empty: '🎉 Không có tài khoản nào trong MCC bị tạm ngưng.',
+    verb: 'Kháng', noun: 'kháng',
+  },
+};
+let verifyMode = VERIFY_MODES.verify;
+// Ô nhập ID MCC thủ công hoặc dropdown MCC lấy tự động từ Ads API
+function showMccInput(manual) {
+  $('mccIdInput').hidden = !manual;
+  $('mccSelect').hidden = manual;
+  $('mccFieldLabel').htmlFor = manual ? 'mccIdInput' : 'mccSelect';
+  $('mccFieldLabel').textContent = manual ? 'ID MCC cần quét' : 'MCC cần quét';
+}
 
-const openVerifyAdsModal = window.uiTrace('renderer.openVerifyAdsModal', async () => {
+let mccLoadSeq = 0;
+async function loadAccessibleMccs() {
+  const seq = ++mccLoadSeq;
+  const select = $('mccSelect');
+  showMccInput(false);
+  select.disabled = true;
+  $('btnScanMcc').disabled = true;
+  select.replaceChildren(new Option('Đang tải danh sách MCC từ Google Ads API…', ''));
+  try {
+    const mccs = await window.googleTool.listAccessibleMccs();
+    if (seq !== mccLoadSeq) return;
+    if (!mccs.length) throw new Error('Tài khoản Google của server GCP đang dùng không truy cập trực tiếp MCC nào.');
+    select.replaceChildren(...mccs.map(m => new Option(`${m.name} (${m.formattedId})`, m.id)));
+    select.disabled = false;
+  } catch (error) {
+    if (seq !== mccLoadSeq) return;
+    showMccInput(true);
+    $('verifyAdsError').textContent = `${error.message} Bạn có thể nhập ID MCC thủ công.`;
+    $('verifyAdsError').hidden = false;
+  } finally {
+    if (seq === mccLoadSeq) $('btnScanMcc').disabled = false;
+  }
+}
+
+// Trạng thái tài khoản Google Ads (customer_client.status): Live / Suspend
+const accountStatusBadge = window.uiTrace('renderer.accountStatusBadge', status => {
+  if (status === 'ENABLED') return '<span class="account-badge is-live">Live</span>';
+  if (status === 'SUSPENDED') return '<span class="account-badge is-suspended">Suspend</span>';
+  return '<span class="account-badge">—</span>';
+});
+
+const escapeAttr = value => String(value ?? '').replace(/[&<>"']/g, ch => `&#${ch.charCodeAt(0)};`);
+
+const openVerifyAdsModal = window.uiTrace('renderer.openVerifyAdsModal', async (mode = 'verify') => {
+  if (VERIFY_MODES[mode] !== verifyMode) {
+    currentScannedVerifyAccounts = [];
+    $('verifyAdsTableBody').innerHTML = '';
+  }
+  verifyMode = VERIFY_MODES[mode];
+  $('verifyAdsTitle').textContent = verifyMode.title;
+  $('verifyAdsSubtitle').textContent = verifyMode.subtitle;
+  $('verifyAdsHelp').textContent = verifyMode.help;
+  mccLoadSeq++;
+  showMccInput(true);
+  $('btnScanMcc').disabled = false;
   currentSelectedProfilesForVerify = [...selected];
   $('verifyAdsError').hidden = true;
   $('verifyAdsSuccess').hidden = true;
@@ -797,17 +915,19 @@ const openVerifyAdsModal = window.uiTrace('renderer.openVerifyAdsModal', async (
   const selectEl = $('verifyProfileSelect');
   if (selectEl) {
     selectEl.innerHTML = '';
-    const profileList = state?.profiles || [];
+    // Chỉ thực hiện trên profile đã chọn khi mở thao tác; chưa chọn profile nào thì cho chọn trong toàn bộ danh sách
+    const allProfiles = state?.profiles || [];
+    const chosen = allProfiles.filter(p => currentSelectedProfilesForVerify.includes(p.id));
+    const profileList = chosen.length ? chosen : allProfiles;
+    selectEl.disabled = chosen.length === 1;
     if (profileList.length > 0) {
       profileList.forEach(p => {
         const opt = document.createElement('option');
         opt.value = p.id;
-        opt.textContent = `${p.name || 'Profile'} ${p.email ? `(${p.email})` : ''}`;
+        const name = p.name || 'Profile';
+        opt.textContent = p.email && p.email !== name ? `${name} (${p.email})` : name;
         selectEl.appendChild(opt);
       });
-      if (currentSelectedProfilesForVerify.length > 0) {
-        selectEl.value = currentSelectedProfilesForVerify[0];
-      }
     } else {
       const opt = document.createElement('option');
       opt.value = '';
@@ -816,14 +936,8 @@ const openVerifyAdsModal = window.uiTrace('renderer.openVerifyAdsModal', async (
     }
   }
 
-  try {
-    const config = await window.googleTool.getGcpAdsConfig();
-    if (config && config.loginCustomerId && !$('mccIdInput').value) {
-      $('mccIdInput').value = config.loginCustomerId;
-    }
-  } catch (_) {}
-
   $('verifyAdsDialog').showModal();
+  loadAccessibleMccs();
 });
 
 const closeVerifyAds = window.uiTrace('renderer.closeVerifyAds', () => $('verifyAdsDialog').close());
@@ -838,9 +952,9 @@ $('mccIdInput').addEventListener('keydown', event => {
 });
 
 $('btnScanMcc').addEventListener('click', window.uiTrace('renderer.scanMccVerification', async () => {
-  const mccId = $('mccIdInput').value.trim();
+  const mccId = ($('mccSelect').hidden ? $('mccIdInput').value : $('mccSelect').value).trim();
   if (!mccId) {
-    $('verifyAdsError').textContent = 'Vui lòng nhập ID MCC (10 chữ số).';
+    $('verifyAdsError').textContent = $('mccSelect').hidden ? 'Vui lòng nhập ID MCC (10 chữ số).' : 'Vui lòng chọn MCC.';
     $('verifyAdsError').hidden = false;
     return;
   }
@@ -852,23 +966,26 @@ $('btnScanMcc').addEventListener('click', window.uiTrace('renderer.scanMccVerifi
   $('verifyAdsLoadingText').textContent = `Đang kết nối Google Ads API và quét danh sách tài khoản trong MCC ${mccId}…`;
   $('btnScanMcc').disabled = true;
 
+  const mode = verifyMode;
   try {
-    const res = await window.googleTool.scanMccVerification(mccId);
-    currentScannedVerifyAccounts = res.needingVerification || [];
+    const res = await mode.scan(mccId);
+    currentScannedVerifyAccounts = mode.list(res);
 
     const total = res.totalAccounts || 0;
     const needCount = currentScannedVerifyAccounts.length;
 
-    $('verifyAdsSummary').textContent = `Kết quả: Tìm thấy ${needCount} tài khoản cần xác minh / Tổng số ${total} tài khoản trong MCC ${res.formattedMccId}.`;
+    $('verifyAdsSummary').textContent = mode.summary(needCount, total, res.formattedMccId, res);
 
     const tbody = $('verifyAdsTableBody');
     tbody.innerHTML = '';
 
     if (needCount === 0) {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td colspan="4" style="padding: 16px; text-align: center; color: #188038; font-weight: 500;">
-        🎉 Tất cả tài khoản trong MCC đều đã xác minh hoặc không có yêu cầu xác minh lúc này.
-      </td>`;
+      const td = document.createElement('td');
+      td.colSpan = 5;
+      td.style.cssText = 'padding: 16px; text-align: center; color: #188038; font-weight: 500;';
+      td.textContent = mode.empty;
+      tr.append(td);
       tbody.appendChild(tr);
     } else {
       currentScannedVerifyAccounts.forEach(item => {
@@ -879,18 +996,20 @@ $('btnScanMcc').addEventListener('click', window.uiTrace('renderer.scanMccVerifi
         if (item.status === 'PENDING_REVIEW') badgeClass = 'badge-verify-review';
         else if (item.status === 'SUCCESS' || item.status === 'NOT_REQUIRED') badgeClass = 'badge-verify-ok';
 
+        const url = escapeAttr(item.actionUrl);
         tr.innerHTML = `
-          <td style="padding: 8px 10px; font-weight: 600; color: #25314a;">${item.formattedId}</td>
-          <td style="padding: 8px 10px; color: #475674; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${item.name}">${item.name}</td>
-          <td style="padding: 8px 10px;"><span class="${badgeClass}">${item.statusText}</span></td>
+          <td style="padding: 8px 10px; font-weight: 600; color: #25314a;">${escapeAttr(item.formattedId)}</td>
+          <td style="padding: 8px 10px; color: #475674; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeAttr(item.name)}">${escapeAttr(item.name)}</td>
+          <td class="account-status-col">${accountStatusBadge(item.accountStatus)}</td>
+          <td style="padding: 8px 10px;"><span class="${badgeClass}" title="${escapeAttr([item.deadline && `Hạn xác minh: ${item.deadline}`, item.linkExpiresAt && `Link hết hạn: ${item.linkExpiresAt}`].filter(Boolean).join('\n'))}">${escapeAttr(item.statusText)}</span></td>
           <td style="padding: 8px 10px; text-align: right; white-space: nowrap;">
-            <button type="button" class="button primary small btn-verify-one" data-url="${item.actionUrl}" data-id="${item.formattedId}" style="padding: 4px 10px; font-size: 11px; margin-right: 4px; font-weight: 600;" title="Xác minh tài khoản này">
-              <svg style="width: 12px; height: 12px; vertical-align: -1px; margin-right: 2px;"><use href="#i-check"/></svg> Verify
+            <button type="button" class="button primary small btn-verify-one" data-url="${url}" data-id="${escapeAttr(item.formattedId)}" style="padding: 4px 10px; font-size: 11px; margin-right: 4px; font-weight: 600;" title="${mode.verb} tài khoản này">
+              <svg style="width: 12px; height: 12px; vertical-align: -1px; margin-right: 2px;"><use href="#i-check"/></svg> ${mode.verb}
             </button>
-            <button type="button" class="button secondary small btn-copy-one-verify" data-url="${item.actionUrl}" style="padding: 4px 8px; font-size: 11px; margin-right: 4px;" title="Copy link xác minh">
+            <button type="button" class="button secondary small btn-copy-one-verify" data-url="${url}" style="padding: 4px 8px; font-size: 11px; margin-right: 4px;" title="Copy link ${mode.noun}">
               <svg style="width: 12px; height: 12px;"><use href="#i-copy"/></svg> Copy
             </button>
-            <button type="button" class="button secondary small btn-open-one-verify" data-url="${item.actionUrl}" style="padding: 4px 8px; font-size: 11px;" title="Mở link trên trình duyệt mặc định">
+            <button type="button" class="button secondary small btn-open-one-verify" data-url="${url}" style="padding: 4px 8px; font-size: 11px;" title="Mở link trên trình duyệt mặc định">
               <svg style="width: 12px; height: 12px;"><use href="#i-external"/></svg> Mở
             </button>
           </td>
@@ -904,9 +1023,9 @@ $('btnScanMcc').addEventListener('click', window.uiTrace('renderer.scanMccVerifi
       btnBatch.hidden = false;
       const count = Math.min(currentSelectedProfilesForVerify.length, currentScannedVerifyAccounts.length);
       if (currentSelectedProfilesForVerify.length > 0) {
-        btnBatch.querySelector('span').textContent = `Verify trên ${count} profile đã chọn`;
+        btnBatch.querySelector('span').textContent = `${mode.verb} trên ${count} profile đã chọn`;
       } else {
-        btnBatch.querySelector('span').textContent = `Verify tất cả link (${currentScannedVerifyAccounts.length})`;
+        btnBatch.querySelector('span').textContent = `${mode.verb} tất cả link (${currentScannedVerifyAccounts.length})`;
       }
     } else {
       btnBatch.hidden = true;
@@ -930,7 +1049,7 @@ $('btnCopyAllVerifyLinks').addEventListener('click', window.uiTrace('renderer.co
   const lines = currentScannedVerifyAccounts.map(a => `${a.formattedId}\t${a.name}\t${a.actionUrl}`);
   const ok = await copyTextToClipboard(lines.join('\n'));
   if (ok) {
-    toast(`Đã sao chép link xác minh của ${currentScannedVerifyAccounts.length} tài khoản.`);
+    toast(`Đã sao chép link ${verifyMode.noun} của ${currentScannedVerifyAccounts.length} tài khoản.`);
   } else {
     toast('Không thể sao chép vào clipboard.', true);
   }
@@ -944,16 +1063,18 @@ $('verifyAdsTableBody').addEventListener('click', window.uiTrace('renderer.table
     if (!url) return;
 
     const chosenProfileId = $('verifyProfileSelect')?.value || currentSelectedProfilesForVerify[0];
+    const mccId = ($('mccSelect').hidden ? $('mccIdInput').value : $('mccSelect').value).trim();
     if (chosenProfileId) {
       try {
-        toast(`Đang mở window xác minh riêng cho ${id}...`);
-        await window.googleTool.verifyAds(chosenProfileId, url);
+        toast(`Đang điều hướng profile tới ads.google.com và chọn MCC...`);
+        await window.googleTool.verifyAds({ id: chosenProfileId, url, mccId: mccId || id });
+        toast(`Đã chọn MCC thành công trên profile.`);
       } catch (err) {
         toast(err.message, true);
       }
     } else {
       try {
-        toast(`Đang mở link xác minh tài khoản ${id}...`);
+        toast(`Đang mở link ${verifyMode.noun} tài khoản ${id}...`);
         await window.googleTool.openExternal(url);
       } catch (err) {
         toast(err.message, true);
@@ -967,7 +1088,7 @@ $('verifyAdsTableBody').addEventListener('click', window.uiTrace('renderer.table
     const url = copyBtn.dataset.url;
     if (url) {
       const ok = await copyTextToClipboard(url);
-      toast(ok ? 'Đã sao chép link xác minh.' : 'Lỗi khi sao chép.', !ok);
+      toast(ok ? `Đã sao chép link ${verifyMode.noun}.` : 'Lỗi khi sao chép.', !ok);
     }
     return;
   }
@@ -991,18 +1112,18 @@ $('btnOpenSelectedProfilesVerify').addEventListener('click', window.uiTrace('ren
   const btn = $('btnOpenSelectedProfilesVerify');
   btn.disabled = true;
   const chosenProfileId = $('verifyProfileSelect')?.value || currentSelectedProfilesForVerify[0];
+  const mccId = ($('mccSelect').hidden ? $('mccIdInput').value : $('mccSelect').value).trim();
   try {
     if (chosenProfileId) {
-      const urls = currentScannedVerifyAccounts.map(a => a.actionUrl);
-      toast(`Đang mở ${urls.length} window riêng biệt và sắp xếp theo chiều ngang...`);
-      await window.googleTool.verifyAdsBatch(chosenProfileId, urls);
-      toast(`Đã mở ${urls.length} window xác minh xếp ngang thành công.`);
+      toast(`Đang điều hướng profile tới ads.google.com và chọn MCC...`);
+      await window.googleTool.verifyAds({ id: chosenProfileId, mccId });
+      toast(`Đã chọn MCC thành công trên profile.`);
       $('verifyAdsDialog').close();
     } else {
       for (const acc of currentScannedVerifyAccounts) {
         await window.googleTool.openExternal(acc.actionUrl);
       }
-      toast(`Đã mở tất cả ${currentScannedVerifyAccounts.length} link xác minh trên trình duyệt.`);
+      toast(`Đã mở tất cả ${currentScannedVerifyAccounts.length} link ${verifyMode.noun} trên trình duyệt.`);
       $('verifyAdsDialog').close();
     }
   } catch (err) {

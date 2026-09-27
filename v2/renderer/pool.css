@@ -1,0 +1,91 @@
+/* Pool worker — ô trạng thái trên thanh trên cùng + bảng cấu hình trong dialog Cài đặt (port từ Pool-Worker/web).
+   Viền sáng chạy quanh ô trạng thái khi pool bận (class .pool-glow). */
+@property --pool-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes pool-rotate {
+  to {
+    --pool-angle: 360deg;
+  }
+}
+
+@keyframes pool-ping {
+  75%, 100% { transform: scale(2.2); opacity: 0; }
+}
+
+@keyframes pool-spin {
+  to { transform: rotate(360deg); }
+}
+
+.pool-glow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px; /* độ dày viền sáng */
+  background: conic-gradient(
+    from var(--pool-angle),
+    transparent 0deg,
+    transparent 210deg,
+    rgba(74, 103, 232, 0.75) 300deg,
+    rgba(125, 150, 255, 1) 350deg,
+    transparent 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: pool-rotate 2.2s linear infinite;
+  pointer-events: none;
+}
+
+/* Ô trạng thái (thanh trên cùng) */
+.pool-status{position:relative;display:inline-flex;align-items:center;gap:10px;padding:6px 12px;font-size:12px;color:#475674;background:#fff;border:1px solid #dfe5ef;border-radius:6px}
+.pool-status-item{display:inline-flex;align-items:center;gap:6px}
+.pool-status-item svg{width:14px;height:14px;color:#8591a5}
+.pool-status-item b{display:inline-block;min-width:4ch;text-align:center;font-variant-numeric:tabular-nums;color:#25314a}
+.pool-status-sep{width:1px;height:14px;background:#dfe5ef}
+.pool-status-blocked{color:#b06000;font-weight:600}
+.pool-live{position:relative;display:inline-flex;width:8px;height:8px}
+.pool-live-dot{position:relative;display:inline-flex;width:8px;height:8px;border-radius:50%;background:#b9c2d0}
+.pool-live-ping{position:absolute;inset:0;border-radius:50%;background:#34a85399;display:none}
+.pool-status.is-active .pool-live-dot{background:#34a853}
+.pool-status.is-active .pool-live-ping{display:inline-flex;animation:pool-ping 1s cubic-bezier(0,0,.2,1) infinite}
+
+/* Bảng cấu hình (dialog Cài đặt) */
+.settings-section + .settings-section{margin-top:22px;padding-top:18px;border-top:1px solid #edf0f5}
+.pool-panel-loading{font-size:12px;color:#76839a}
+.pool-panel-title{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:#25314a;margin-bottom:8px}
+.pool-panel-title svg{width:15px;height:15px;color:#4a67e8}
+.pool-panel-title.is-config{margin-top:18px;margin-bottom:10px}
+.pool-stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.pool-stat-pill{display:flex;flex-direction:column;gap:2px;border:1px solid #e2e8f0;background:#f8fafc;border-radius:10px;padding:8px 12px}
+.pool-stat-pill span{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#8591a5}
+.pool-stat-pill b{font-size:17px;color:#25314a;font-variant-numeric:tabular-nums}
+.pool-stat-pill.is-accent b{color:#4a67e8}
+.pool-stat-pill.is-success b{color:#188038}
+.pool-stat-pill.is-warn b{color:#b06000}
+.pool-stat-pill.is-small b{font-size:13px;line-height:23px}
+.pool-paused{display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px 12px;border-radius:8px;background:#fef7e0;color:#b06000;font-size:12px}
+.pool-paused svg{width:14px;height:14px}
+.pool-field-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px}
+.pool-field{display:flex;flex-direction:column;gap:4px}
+.pool-field-label{font-size:12px;font-weight:600;color:#374760}
+.pool-field-input{display:flex;align-items:center;gap:8px}
+.pool-field-input input{width:120px;padding:8px 10px;border:1px solid #dfe5ef;border-radius:6px;font-size:12px;color:#25314a;background:#fff}
+.pool-field-input input:focus{outline:2px solid #8da2ff;outline-offset:1px}
+.pool-field-input small{font-size:11px;color:#8591a5}
+.pool-field .field-help{margin-top:0;line-height:1.45}
+.pool-panel-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:16px}
+.pool-panel-actions .button{padding:9px 14px}
+.pool-panel-actions .button svg{width:15px;height:15px}
+.pool-panel-actions .button:disabled{opacity:.5;cursor:default}
+.pool-panel-actions .button.is-busy svg{animation:pool-spin 1s linear infinite}
+.pool-panel-note{font-size:12px}
+.pool-panel-note.is-error{color:#c44359}
+
+/* Trình duyệt không hỗ trợ @property: viền không xoay, phần còn lại vẫn hiển thị bình thường. */

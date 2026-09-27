@@ -7,6 +7,7 @@
   <title>GoogleTool v2</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="profile-table.css">
+  <link rel="stylesheet" href="pool.css">
 </head>
 <body>
   <svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
@@ -20,12 +21,16 @@
     <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
     <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
     <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
-    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol>
-    <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22"/></symbol>
     <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></symbol>
     <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
     <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
     <symbol id="i-external" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></symbol>
+    <symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></symbol>
+    <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M10 10h4v4h-4zM9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></symbol>
+    <symbol id="i-sigma" viewBox="0 0 24 24"><path d="M18 7V4H6l6 8-6 8h12v-3"/></symbol>
+    <symbol id="i-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4"/><path d="M3.3 19a10 10 0 1 1 17.4 0"/></symbol>
+    <symbol id="i-loader" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.2-8.6"/></symbol>
   </defs></svg>
   <aside class="sidebar">
     <a class="brand" href="#"><span class="brand-mark">G<span></span></span><span>GoogleTool<small>PROFILE MANAGER</small></span><b>v2</b></a>
@@ -43,15 +48,16 @@
     <header class="topbar">
       <div>Workspace <span>/</span> <strong>Profiles</strong></div>
       <div class="topbar-right">
+        <div id="poolStatus"></div>
         <button type="button" class="topbar-btn" id="openGcpSettings" title="Cài đặt Google Cloud Platform cho Ads API">
           <svg><use href="#i-settings"/></svg>
-          <span>Cài đặt GCP</span>
+          <span>Cài đặt</span>
         </button>
         <span class="local-badge"><span></span> Local workspace</span>
       </div>
     </header>
     <div class="page">
-      <section class="page-heading"><div id="profileActions" hidden><span id="selectedCount"></span><div class="action-picker"><button type="button" class="button secondary" id="actionButton" aria-expanded="false" aria-controls="actionOptions">Thao tác ▾</button><div id="actionOptions" hidden><button type="button" data-action="open">Mở</button><button type="button" data-action="login-gmail">Login gmail</button><button type="button" data-action="enable-passkey">Bật Passkey</button><button type="button" data-action="verify-ads">Xác minh tài khoản ads</button><div class="menu-item-with-sub"><button type="button" data-copy="all" class="copy-parent-btn">Copy data <span class="submenu-arrow">▸</span></button><div class="submenu-options"><button type="button" data-copy="all">Tất cả</button><button type="button" data-copy="email">Email</button><button type="button" data-copy="password">Password</button><button type="button" data-copy="twofa-code">2FA Code</button><button type="button" data-copy="twofa">2FA Key</button><button type="button" data-copy="recoveryMail">Email khôi phục</button><button type="button" data-copy="securityCode">Security code</button><button type="button" data-copy="passkey">Passkey</button></div></div><button type="button" data-action="delete">Xóa</button></div></div><button type="button" class="button primary" id="runAction" disabled>▶ Run</button></div><button type="button" class="button secondary" id="btnAdsLoginLink" title="Tạo link đăng nhập cấp quyền Google Ads API"><svg><use href="#i-link"/></svg><span>Tạo link đăng nhập ads</span></button><button class="button primary" id="createTop" disabled><svg><use href="#i-plus"/></svg>Tạo profile</button></section>
+      <section class="page-heading"><div id="profileActions" hidden><span id="selectedCount"></span><div class="action-picker"><button type="button" class="button secondary" id="actionButton" aria-expanded="false" aria-controls="actionOptions">Thao tác ▾</button><div id="actionOptions" hidden><button type="button" data-action="open">Mở</button><button type="button" data-action="login-gmail">Login gmail</button><button type="button" data-action="enable-passkey">Bật Passkey</button><button type="button" data-action="verify-ads">Xác minh tài khoản ads</button><button type="button" data-action="appeal-ads">Kháng</button><div class="menu-item-with-sub"><button type="button" data-copy="all" class="copy-parent-btn">Copy data <span class="submenu-arrow">▸</span></button><div class="submenu-options"><button type="button" data-copy="all">Tất cả</button><button type="button" data-copy="email">Email</button><button type="button" data-copy="password">Password</button><button type="button" data-copy="twofa-code">2FA Code</button><button type="button" data-copy="twofa">2FA Key</button><button type="button" data-copy="recoveryMail">Email khôi phục</button><button type="button" data-copy="securityCode">Security code</button><button type="button" data-copy="passkey">Passkey</button></div></div><button type="button" data-action="delete">Xóa</button></div></div><button type="button" class="button primary" id="runAction" disabled>▶ Run</button></div><button type="button" class="button secondary" id="btnAdsLoginLink" title="Tạo link đăng nhập cấp quyền Google Ads API"><svg><use href="#i-link"/></svg><span>Tạo link đăng nhập ads</span></button><button class="button primary" id="createTop" disabled><svg><use href="#i-plus"/></svg>Tạo profile</button></section>
       <div id="openQueueControls" hidden><label>Luồng <input id="threadLimit" type="number" min="1" max="50" step="1" value="1" aria-label="Số profile mở đồng thời"></label><span id="openQueueStatus"></span><button type="button" class="button secondary" id="cancelOpenQueue" hidden>Hủy hàng đợi</button></div>
       <section class="profiles-panel" aria-label="Danh sách profile">
         <div class="panel-heading"><h2>Profiles</h2><label class="search"><svg><use href="#i-search"/></svg><input id="search" type="search" placeholder="Tìm tên, Gmail hoặc ghi chú…" aria-label="Tìm profile"></label></div>
@@ -91,67 +97,39 @@
     <form id="gcpSettingsForm">
       <div class="dialog-header">
         <div class="dialog-header-title-wrap">
-          <strong id="gcpSettingsTitle">Cài đặt GCP Ads API</strong>
+          <strong id="gcpSettingsTitle">Cài đặt</strong>
           <span class="firebase-sync-badge" title="Đồng bộ tự động với Firebase Realtime Database (omini-305df)">
             <span class="sync-dot"></span> Firebase Sync
           </span>
         </div>
         <button type="button" class="icon-button" id="closeGcpSettings" aria-label="Đóng"><svg><use href="#i-close"/></svg></button>
       </div>
-      <p class="dialog-subtitle">Cấu hình thông tin OAuth & Developer Token từ Google Cloud Platform để thực hiện các nghiệp vụ Ads API.</p>
+      <p class="dialog-subtitle">Cấu hình ứng dụng. Các thay đổi được lưu trên máy và đồng bộ lên Firebase.</p>
       <div class="form-body">
-        <div class="gcp-json-import-box">
-          <div class="gcp-json-import-info">
-            <strong>Nhập nhanh từ tệp JSON</strong>
-            <small>Tải tệp client_secret_xxx.json hoặc credentials.json từ GCP Console</small>
-          </div>
-          <input type="file" id="gcpJsonFile" accept=".json" hidden>
-          <button type="button" class="button secondary" id="gcpUploadJson">
-            <svg><use href="#i-upload"/></svg>
-            <span>Tải lên JSON</span>
-          </button>
-        </div>
-
-        <div class="field-group">
-          <label for="gcpClientId">Client ID *</label>
-          <input type="text" id="gcpClientId" placeholder="ví dụ: 123456789-xxx.apps.googleusercontent.com" autocomplete="off" spellcheck="false">
-        </div>
-
-        <div class="field-group">
-          <label for="gcpClientSecret">Client Secret *</label>
-          <div class="input-password-wrap">
-            <input type="password" id="gcpClientSecret" placeholder="Client secret từ OAuth credentials" autocomplete="off" spellcheck="false">
-            <button type="button" class="toggle-password-btn" data-target="gcpClientSecret" aria-label="Hiện/ẩn Client Secret">
-              <svg><use href="#i-eye"/></svg>
+        <section class="settings-section">
+          <div class="settings-section-head">
+            <div>
+              <strong>Server GCP (Google Ads API)</strong>
+              <small>OAuth & Developer Token từ Google Cloud Platform. Server "Đang dùng" được dùng để tạo link đăng nhập Ads và quét MCC.</small>
+            </div>
+            <button type="button" class="button secondary" id="gcpAddServer">
+              <svg><use href="#i-plus"/></svg>
+              <span>Thêm server GCP</span>
             </button>
           </div>
-        </div>
+          <div class="gcp-server-list" id="gcpServerList"></div>
+          <p class="gcp-server-empty" id="gcpServerEmpty" hidden>Chưa có server GCP nào. Bấm "Thêm server GCP" để thêm.</p>
+        </section>
 
-        <div class="field-group">
-          <label for="gcpDeveloperToken">Developer Token (tùy chọn - đã tích hợp vào GCP)</label>
-          <div class="input-password-wrap">
-            <input type="password" id="gcpDeveloperToken" placeholder="Tùy chọn (Google Ads API đã tích hợp vào GCP)" autocomplete="off" spellcheck="false">
-            <button type="button" class="toggle-password-btn" data-target="gcpDeveloperToken" aria-label="Hiện/ẩn Developer Token">
-              <svg><use href="#i-eye"/></svg>
-            </button>
+        <section class="settings-section">
+          <div class="settings-section-head">
+            <div>
+              <strong>Pool worker (Google Ads API)</strong>
+              <small>Mọi lệnh gọi Google Ads API chạy qua pool này: tự dò trần concurrency, dính quota thì giảm một nửa và back off. Nút lưu riêng, áp ngay và đồng bộ Firebase.</small>
+            </div>
           </div>
-        </div>
-
-        <div class="field-group">
-          <label for="gcpRefreshToken">Refresh Token *</label>
-          <div class="input-password-wrap">
-            <input type="password" id="gcpRefreshToken" placeholder="OAuth2 Refresh Token với quyền adwords" autocomplete="off" spellcheck="false">
-            <button type="button" class="toggle-password-btn" data-target="gcpRefreshToken" aria-label="Hiện/ẩn Refresh Token">
-              <svg><use href="#i-eye"/></svg>
-            </button>
-          </div>
-        </div>
-
-        <div class="field-group">
-          <label for="gcpLoginCustomerId">Login Customer ID (MCC / Tùy chọn)</label>
-          <input type="text" id="gcpLoginCustomerId" placeholder="ví dụ: 1234567890 (không có dấu gạch ngang)" autocomplete="off" spellcheck="false">
-          <small class="field-help">ID tài khoản người quản lý (MCC), cần thiết nếu refresh token cấp từ MCC.</small>
-        </div>
+          <div id="poolPanel"></div>
+        </section>
 
         <p class="create-help">Các thông tin khóa bí mật (Client Secret, Developer Token, Refresh Token) được mã hóa an toàn bằng safeStorage trước khi lưu vào máy.</p>
         <p class="form-error" id="gcpSettingsError" role="alert" hidden></p>
@@ -162,6 +140,42 @@
       </div>
     </form>
   </dialog>
+  <template id="gcpServerTemplate">
+    <div class="gcp-server-card">
+      <div class="gcp-server-head">
+        <input type="text" class="gcp-server-name" data-field="name" placeholder="Tên server" aria-label="Tên server GCP" autocomplete="off" spellcheck="false">
+        <label class="gcp-server-active"><input type="radio" name="gcpActiveServer"> Đang dùng</label>
+        <button type="button" class="icon-button gcp-server-remove" title="Xóa server này" aria-label="Xóa server GCP"><svg><use href="#i-close"/></svg></button>
+      </div>
+      <div class="gcp-json-import-box">
+        <div class="gcp-json-import-info">
+          <strong>Nhập nhanh từ tệp JSON</strong>
+          <small>Tải tệp client_secret_xxx.json hoặc credentials.json từ GCP Console</small>
+        </div>
+        <input type="file" class="gcp-json-file" accept=".json" hidden>
+        <button type="button" class="button secondary gcp-upload-json">
+          <svg><use href="#i-upload"/></svg>
+          <span>Tải lên JSON</span>
+        </button>
+      </div>
+      <div class="field-group">
+        <label data-for="clientId">Client ID *</label>
+        <input type="text" data-field="clientId" placeholder="ví dụ: 123456789-xxx.apps.googleusercontent.com" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field-group">
+        <label data-for="clientSecret">Client Secret *</label>
+        <input type="password" data-field="clientSecret" placeholder="Client secret từ OAuth credentials" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field-group">
+        <label data-for="developerToken">Developer Token (tùy chọn - đã tích hợp vào GCP)</label>
+        <input type="password" data-field="developerToken" placeholder="Tùy chọn (Google Ads API đã tích hợp vào GCP)" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field-group">
+        <label data-for="refreshToken">Refresh Token *</label>
+        <input type="password" data-field="refreshToken" placeholder="OAuth2 Refresh Token với quyền adwords" autocomplete="off" spellcheck="false">
+      </div>
+    </div>
+  </template>
   <dialog id="adsLinkDialog" aria-labelledby="adsLinkTitle">
     <form id="adsLinkForm">
       <div class="dialog-header">
@@ -188,7 +202,7 @@
         <div class="gcp-json-import-box" style="margin-top: 18px;">
           <div class="gcp-json-import-info" style="width: 100%;">
             <strong>Đổi mã Code lấy Refresh Token tự động</strong>
-            <small>Sau khi bấm "Cho phép" ở trình duyệt, trang sẽ chuyển hướng về <code style="background:#e8edf5;padding:1px 4px;border-radius:3px;">http://127.0.0.1/?code=...</code>. Dán URL đó (hoặc mã code) vào ô dưới đây để tự động lấy Refresh Token và lưu vào Cài đặt GCP & Firebase.</small>
+            <small>Sau khi bấm "Cho phép" ở trình duyệt, trang sẽ chuyển hướng về <code style="background:#e8edf5;padding:1px 4px;border-radius:3px;">http://127.0.0.1/?code=...</code>. Dán URL đó (hoặc mã code) vào ô dưới đây để tự động lấy Refresh Token và lưu vào server GCP đang dùng & Firebase.</small>
           </div>
         </div>
 
@@ -221,18 +235,19 @@
         <button type="button" class="icon-button" id="closeVerifyAds" aria-label="Đóng"><svg><use href="#i-close"/></svg></button>
       </div>
       <div class="form-body">
-        <p class="dialog-subtitle">Nhập ID tài khoản quản lý (MCC) để quét danh sách các tài khoản con cần xác minh danh tính nhà quảng cáo (Advertiser Verification).</p>
+        <p class="dialog-subtitle" id="verifyAdsSubtitle">Nhập ID tài khoản quản lý (MCC) để quét danh sách các tài khoản con cần xác minh danh tính nhà quảng cáo (Advertiser Verification).</p>
 
         <div class="field-group">
-          <label for="mccIdInput">ID MCC cần quét</label>
-          <div style="display: flex; gap: 8px;">
+          <label for="mccIdInput" id="mccFieldLabel">ID MCC cần quét</label>
+          <div class="mcc-scan-row">
+            <select id="mccSelect" hidden></select>
             <input type="text" id="mccIdInput" placeholder="ví dụ: 123-456-7890 hoặc 1234567890" autocomplete="off" spellcheck="false" style="flex: 1;">
             <button type="button" class="button primary" id="btnScanMcc" style="flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;">
               <svg><use href="#i-search"/></svg>
               <span>Quét tài khoản</span>
             </button>
           </div>
-          <small class="field-help">Hệ thống sẽ dùng cấu hình GCP Ads API để tự động truy vấn danh sách tài khoản con và kiểm tra trạng thái xác minh.</small>
+          <small class="field-help" id="verifyAdsHelp">Hệ thống sẽ dùng server GCP đang dùng (trong Cài đặt) để tự động truy vấn danh sách tài khoản con và kiểm tra trạng thái xác minh.</small>
         </div>
 
         <div id="verifyAdsLoading" style="display: none; align-items: center; gap: 10px; padding: 14px; background: #f0f4ff; border-radius: 8px; margin-bottom: 14px; font-size: 12px; color: #2d4db5;">
@@ -269,6 +284,7 @@
                 <tr style="background: #f7f9fd; position: sticky; top: 0; z-index: 1;">
                   <th style="padding: 8px 10px; text-align: left; border-bottom: 1px solid #dfe5ef; width: 20%;">Customer ID</th>
                   <th style="padding: 8px 10px; text-align: left; border-bottom: 1px solid #dfe5ef; width: 25%;">Tên tài khoản</th>
+                  <th class="account-status-col">Tài khoản</th>
                   <th style="padding: 8px 10px; text-align: left; border-bottom: 1px solid #dfe5ef; width: 22%;">Trạng thái</th>
                   <th style="padding: 8px 10px; text-align: right; border-bottom: 1px solid #dfe5ef; width: 33%;">Thao tác</th>
                 </tr>
@@ -288,6 +304,9 @@
   </dialog>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   <script src="ui-trace.js"></script>
+  <script src="pool-api.js"></script>
+  <script src="pool-status.js"></script>
+  <script src="pool-panel.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

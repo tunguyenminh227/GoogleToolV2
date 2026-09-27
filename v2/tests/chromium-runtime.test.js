@@ -29,6 +29,7 @@ test('launch arguments retain the seed and automatic GPU configuration without s
   assert.deepEqual(args, launchArgs(root, 'https://iphey.com/', JSON.parse(JSON.stringify(fingerprint))));
   const resume = launchArgs(root, null, fingerprint);
   assert.ok(!resume.includes('--new-window'));
+  assert.ok(resume.includes('--restore-last-session'));
   assert.ok(resume.every(arg => arg.startsWith('--')));
   assert.ok(resume.includes('--window-size=1280,720'));
   assert.ok(!args.some(arg => /no-sandbox|disable-web-security|remote-debugging/.test(arg)));

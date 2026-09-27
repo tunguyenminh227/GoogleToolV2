@@ -24,14 +24,21 @@ test('CLICK_CONTINUE_JS contains required selectors and multi-language labels', 
   assert.ok(CLICK_CONTINUE_JS.includes('MouseEvent'));
 }));
 
-test('startPasskeyWatcher deduplicates and does not call openFreshTab', t('test.watcherNoNewTab', async () => {
+test('startPasskeyWatcher opens fresh tab with passkey when challenge detected', t('test.watcherNewTabWithPasskey', async () => {
   const { startPasskeyWatcher } = require('../passkey-watcher');
   const http = require('node:http');
 
   let newTabCalled = false;
+  let closeOldTabCalled = false;
   let jsonCalls = 0;
 
   const server = http.createServer((req, res) => {
+    if (req.url.startsWith('/json/close/tab-1')) {
+      closeOldTabCalled = true;
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true }));
+      return;
+    }
     if (req.url.startsWith('/json/new')) {
       newTabCalled = true;
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -58,7 +65,8 @@ test('startPasskeyWatcher deduplicates and does not call openFreshTab', t('test.
   fakeChild.killed = false;
   fakeChild.exitCode = null;
 
-  startPasskeyWatcher(fakeChild, port, 'fake-blob', 'p-1');
+  const validBlob = Buffer.from(JSON.stringify({ credentialId: 'c1' })).toString('base64');
+  startPasskeyWatcher(fakeChild, port, validBlob, 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d');
 
   // Chờ watcher chạy polling ít nhất 2 vòng
   await new Promise(r => setTimeout(r, 2200));
@@ -67,6 +75,7 @@ test('startPasskeyWatcher deduplicates and does not call openFreshTab', t('test.
   server.close();
 
   assert.ok(jsonCalls >= 2, 'Watcher phải poll ít nhất 2 lần');
-  assert.equal(newTabCalled, false, 'Watcher tuyệt đối không được mở tab mới (/json/new)');
+  assert.equal(closeOldTabCalled, true, 'Watcher phải đóng tab cũ bị vướng');
+  assert.equal(newTabCalled, true, 'Watcher phải mở tab mới sạch (/json/new) để gắn CDP Virtual Authenticator');
 }));
 

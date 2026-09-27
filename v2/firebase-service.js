@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const trace = require('./trace-log');
+const gcpServers = require('./gcp-servers');
 
 const SA_FILE = path.join(__dirname, '..', 'omini-305df-firebase-adminsdk-fbsvc-01607c9876.json');
 const DATABASE_URL = 'https://omini-305df-default-rtdb.asia-southeast1.firebasedatabase.app';
@@ -59,36 +60,29 @@ const getAccessToken = trace.traced('firebase.getAccessToken', async () => {
   return cachedToken;
 });
 
-const getGcpAdsConfigFromFirebase = trace.traced('firebase.getGcpAdsConfig', async () => {
+const readNode = trace.traced('firebase.readNode', async nodePath => {
   const token = await getAccessToken();
-  const url = `${DATABASE_URL}/gcpAdsConfig.json?access_token=${token}`;
-  const res = await fetch(url);
+  const res = await fetch(`${DATABASE_URL}/${nodePath}.json?access_token=${token}`);
   if (!res.ok) {
     throw new Error(`Đọc cấu hình từ Firebase thất bại (${res.status}).`);
   }
   const data = await res.json();
-  if (!data || typeof data !== 'object') return null;
-  return {
-    clientId: typeof data.clientId === 'string' ? data.clientId : '',
-    clientSecret: typeof data.clientSecret === 'string' ? data.clientSecret : '',
-    developerToken: typeof data.developerToken === 'string' ? data.developerToken : '',
-    refreshToken: typeof data.refreshToken === 'string' ? data.refreshToken : '',
-    loginCustomerId: typeof data.loginCustomerId === 'string' ? data.loginCustomerId : '',
-    updatedAt: data.updatedAt || null,
-  };
+  return data && typeof data === 'object' ? data : null;
 });
 
-const saveGcpAdsConfigToFirebase = trace.traced('firebase.saveGcpAdsConfig', async config => {
+// Trả về { activeId, servers }, hoặc null nếu Firebase chưa có cấu hình nào.
+// Chưa có danh sách mới thì chuyển từ cấu hình 1 GCP cũ (gcpAdsConfig).
+const getGcpAdsServersFromFirebase = trace.traced('firebase.getGcpAdsServers', async () => {
+  const node = await readNode('gcpAdsServers');
+  if (node) return gcpServers.normalize(node);
+  const legacy = gcpServers.fromLegacy(await readNode('gcpAdsConfig'));
+  return legacy.servers.length ? legacy : null;
+});
+
+const saveGcpAdsServersToFirebase = trace.traced('firebase.saveGcpAdsServers', async input => {
   const token = await getAccessToken();
-  const url = `${DATABASE_URL}/gcpAdsConfig.json?access_token=${token}`;
-  const payload = {
-    clientId: typeof config?.clientId === 'string' ? config.clientId.trim() : '',
-    clientSecret: typeof config?.clientSecret === 'string' ? config.clientSecret.trim() : '',
-    developerToken: typeof config?.developerToken === 'string' ? config.developerToken.trim() : '',
-    refreshToken: typeof config?.refreshToken === 'string' ? config.refreshToken.trim() : '',
-    loginCustomerId: typeof config?.loginCustomerId === 'string' ? config.loginCustomerId.trim() : '',
-    updatedAt: new Date().toISOString(),
-  };
+  const url = `${DATABASE_URL}/gcpAdsServers.json?access_token=${token}`;
+  const payload = { ...gcpServers.normalize(input), updatedAt: new Date().toISOString() };
   const res = await fetch(url, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -100,9 +94,41 @@ const saveGcpAdsConfigToFirebase = trace.traced('firebase.saveGcpAdsConfig', asy
   return payload;
 });
 
+// Cấu hình pool worker (queryPool) — dùng chung cho mọi máy, ai cũng đổi được
+const POOL_CONFIG_KEYS = ['start', 'min', 'hardCap', 'probeBatch', 'fallbackBlockMs', 'recoveryMs', 'taskTimeoutMs'];
+
+const pickPoolConfig = trace.traced('firebase.pickPoolConfig', data => {
+  const config = {};
+  for (const key of POOL_CONFIG_KEYS) {
+    if (Number.isFinite(Number(data?.[key])) && data?.[key] !== null) config[key] = Number(data[key]);
+  }
+  return config;
+});
+
+const getPoolConfigFromFirebase = trace.traced('firebase.getPoolConfig', async () => {
+  const data = await readNode('poolConfig');
+  return data ? pickPoolConfig(data) : null;
+});
+
+const savePoolConfigToFirebase = trace.traced('firebase.savePoolConfig', async config => {
+  const token = await getAccessToken();
+  const payload = { ...pickPoolConfig(config), updatedAt: new Date().toISOString() };
+  const res = await fetch(`${DATABASE_URL}/poolConfig.json?access_token=${token}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    throw new Error(`Lưu cấu hình pool lên Firebase thất bại (${res.status}).`);
+  }
+  return payload;
+});
+
 module.exports = {
+  getPoolConfigFromFirebase,
+  savePoolConfigToFirebase,
   getAccessToken,
-  getGcpAdsConfigFromFirebase,
-  saveGcpAdsConfigToFirebase,
+  getGcpAdsServersFromFirebase,
+  saveGcpAdsServersToFirebase,
   createServiceAccountJwt,
 };

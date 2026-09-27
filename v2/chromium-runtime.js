@@ -57,7 +57,8 @@ const launchArgs = trace.traced('chromium.launchArgs', (directory, url, fingerpr
     }
   }
   return [`--user-data-dir=${directory}`, '--no-first-run', '--no-default-browser-check',
-    ...fingerprintArgs(fingerprint), `--window-size=${normalize(fingerprint).windowSize.replace('x', ',')}`, ...(url === null ? [] : ['--new-window', url])];
+    ...(url === null ? ['--restore-last-session'] : ['--new-window', url]),
+    ...fingerprintArgs(fingerprint), `--window-size=${normalize(fingerprint).windowSize.replace('x', ',')}`];
 });
 
 module.exports = { CHROMIUM_VERSION, BUNDLED_CHROMIUM, HASHES, inspectChromium, resolveChromium, launchArgs };

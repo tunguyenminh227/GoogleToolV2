@@ -4,11 +4,14 @@ const t = trace.traced;
 
 const isChallengeUrl = t('passkeyWatcher.isChallengeUrl', url => {
   if (!url || typeof url !== 'string') return false;
-  return url.includes('signin/challenge/pk') || url.includes('/challenge/pk');
+  return url.includes('challenge/pk') ||
+         url.includes('signin/challenge/pk') ||
+         url.includes('/challenge/pk') ||
+         url.includes('challenge/webauthn');
 });
 
 const CLICK_CONTINUE_JS = `(function(){
-  var targets = ['continue', 'tiếp tục', 'continuer', 'continuar', 'weiter', 'ok', 'siguiente', 'next', 'tiếp theo'];
+  var targets = ['continue', 'tiếp tục', 'continuer', 'continuar', 'weiter', 'ok', 'siguiente', 'next', 'tiếp theo', 'confirm with a passkey', 'confirm', 'xác nhận bằng passkey', 'xác nhận bằng khoá truy cập', 'xác nhận bằng khoá đăng nhập', 'xác nhận'];
 
   function trigger(el) {
     if (!el) return false;
@@ -197,7 +200,7 @@ const clickContinueOnTab = t('passkeyWatcher.clickContinueOnTab', async (wsUrl, 
   }, 35000);
 });
 
-const openFreshTabWithPasskey = t('passkeyWatcher.openFreshTab', async (port, challengeUrl, passkeyBlob) => {
+const openFreshTabWithPasskey = t('passkeyWatcher.openFreshTab', async (port, challengeUrl, passkeyBlob, onTabCreated = null) => {
   const blob = (passkeyBlob || '').trim();
   if (!blob) return false;
   let cred;
@@ -215,6 +218,10 @@ const openFreshTabWithPasskey = t('passkeyWatcher.openFreshTab', async (port, ch
     newTab = await nr.json();
   } catch (_) {
     return false;
+  }
+
+  if (newTab && newTab.id && typeof onTabCreated === 'function') {
+    onTabCreated(newTab);
   }
 
   const wsUrl = newTab && newTab.webSocketDebuggerUrl;
@@ -242,49 +249,71 @@ const openFreshTabWithPasskey = t('passkeyWatcher.openFreshTab', async (port, ch
     await send('Runtime.enable');
     await send('Page.navigate', { url: challengeUrl });
 
-    let loaded = false;
-    for (let i = 0; i < 20 && !loaded; i++) {
+    // Đợi trang thực sự điều hướng tới link challenge (không nhầm với about:blank)
+    let navigated = false;
+    for (let i = 0; i < 30; i++) {
       await new Promise(r => setTimeout(r, 400));
-      const r1 = await send('Runtime.evaluate', { expression: 'document.readyState', returnByValue: true });
-      const ready = r1 && r1.result && r1.result.result ? r1.result.result.value : '';
-      if (ready === 'complete') loaded = true;
-    }
-
-    await new Promise(r => setTimeout(r, 600));
-
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const cr = await send('Runtime.evaluate', { expression: CLICK_CONTINUE_JS, returnByValue: true });
-      const res = cr && cr.result && cr.result.result ? cr.result.result.value : '';
-      console.log(`[passkey-watcher] Tab mới: Bấm Continue lần ${attempt + 1}:`, res);
-      if (res && res.startsWith('clicked')) break;
-      await new Promise(r => setTimeout(r, 800));
-    }
-
-    let success = false;
-    for (let j = 0; j < 15; j++) {
-      await new Promise(r => setTimeout(r, 500));
       const hr = await send('Runtime.evaluate', { expression: 'location.href', returnByValue: true });
       const href = hr && hr.result && hr.result.result ? hr.result.result.value : '';
-      if (typeof href === 'string' && !isChallengeUrl(href)) {
-        success = true;
+      if (typeof href === 'string' && isChallengeUrl(href)) {
+        navigated = true;
         break;
       }
     }
 
-    console.log('[passkey-watcher] Kết quả xác thực trên tab mới sạch:', success ? 'THÀNH CÔNG' : 'chờ/tiếp tục');
+    if (navigated) {
+      for (let i = 0; i < 20; i++) {
+        const r1 = await send('Runtime.evaluate', { expression: 'document.readyState', returnByValue: true });
+        const ready = r1 && r1.result && r1.result.result ? r1.result.result.value : '';
+        if (ready === 'complete' || ready === 'interactive') break;
+        await new Promise(r => setTimeout(r, 400));
+      }
+    }
+
+    await new Promise(r => setTimeout(r, 600));
+
+    let clicked = false;
+    for (let attempt = 0; attempt < 15; attempt++) {
+      const cr = await send('Runtime.evaluate', { expression: CLICK_CONTINUE_JS, returnByValue: true });
+      const res = cr && cr.result && cr.result.result ? cr.result.result.value : '';
+      if (res && typeof res === 'string' && res.startsWith('clicked')) {
+        console.log(`[passkey-watcher] Tab mới: Đã bấm Continue thành công:`, res);
+        clicked = true;
+        break;
+      }
+      await new Promise(r => setTimeout(r, 600));
+    }
+
+    let success = false;
+    if (navigated) {
+      for (let j = 0; j < 30; j++) {
+        await new Promise(r => setTimeout(r, 500));
+        const hr = await send('Runtime.evaluate', { expression: 'location.href', returnByValue: true });
+        const href = hr && hr.result && hr.result.result ? hr.result.result.value : '';
+        if (typeof href === 'string' && !isChallengeUrl(href) && href !== 'about:blank' && !href.startsWith('chrome:')) {
+          console.log('[passkey-watcher] Xác thực thành công! URL tab mới đã chuyển sang:', href.split('?')[0]);
+          success = true;
+          break;
+        }
+      }
+    }
+
+    console.log('[passkey-watcher] Kết quả xác thực trên tab mới sạch:', success ? 'THÀNH CÔNG' : (clicked ? 'Đã bấm Continue' : 'chờ/tiếp tục'));
     return success;
-  }, 35000);
+  }, 40000);
 });
 
-const startPasskeyWatcher = t('passkeyWatcher.start', (child, port, passkeyBlob, profileId) => {
+const startPasskeyWatcher = t('passkeyWatcher.start', (child, port, passkeyBlobOrGetter, profileId) => {
   if (!child || !port) return;
   const activeTargets = new Set();
   const handledTargets = new Map();
+  const managedTabs = new Set();
+  let isProcessing = false;
   let stopped = false;
 
   const timer = setInterval(async () => {
-    if (stopped || child.killed || child.exitCode !== null) {
-      clearInterval(timer);
+    if (stopped || child.killed || child.exitCode !== null || isProcessing) {
+      if (stopped || child.killed || child.exitCode !== null) clearInterval(timer);
       return;
     }
 
@@ -295,34 +324,66 @@ const startPasskeyWatcher = t('passkeyWatcher.start', (child, port, passkeyBlob,
       if (!Array.isArray(targets)) return;
 
       const currentIds = new Set(targets.map(t => t.id));
+      for (const id of activeTargets) {
+        if (!currentIds.has(id)) activeTargets.delete(id);
+      }
       for (const id of handledTargets.keys()) {
         if (!currentIds.has(id)) handledTargets.delete(id);
+      }
+      for (const id of managedTabs) {
+        if (!currentIds.has(id)) managedTabs.delete(id);
       }
 
       for (const target of targets) {
         if (target.type !== 'page' || !target.webSocketDebuggerUrl) continue;
+        if (managedTabs.has(target.id)) continue;
         if (!isChallengeUrl(target.url)) continue;
 
         if (activeTargets.has(target.id)) continue;
-        const lastUrl = handledTargets.get(target.id);
-        if (lastUrl === target.url) continue;
+        if (handledTargets.has(target.id)) continue;
 
         activeTargets.add(target.id);
         handledTargets.set(target.id, target.url);
-        console.log('[passkey-watcher] 🎯 Phát hiện tab Passkey challenge:', target.url.split('?')[0]);
+        isProcessing = true;
+        console.log('[passkey-watcher] 🎯 Bất cứ khi nào có link khớp, tự động thực hiện Passkey:', target.url.split('?')[0]);
 
-        trace.withProfile(profileId, async () => {
+        const runProfileTrace = (profileId && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(profileId))
+          ? fn => trace.withProfile(profileId, fn)
+          : fn => fn();
+
+        runProfileTrace(async () => {
           try {
-            await clickContinueOnTab(target.webSocketDebuggerUrl, passkeyBlob);
+            const rawBlob = typeof passkeyBlobOrGetter === 'function' ? passkeyBlobOrGetter() : passkeyBlobOrGetter;
+            const passkeyBlob = (rawBlob || '').trim();
+
+            if (passkeyBlob) {
+              const challengeUrl = target.url;
+              console.log('[passkey-watcher] 🚀 Sao chép URL challenge và đóng popup cũ bị vướng...');
+              await fetch(`http://127.0.0.1:${port}/json/close/${target.id}`).catch(() => {});
+              console.log('[passkey-watcher] 🔑 Bật tab mới và gắn CDP để nhập Passkey tự động...');
+              await openFreshTabWithPasskey(port, challengeUrl, passkeyBlob, newTab => {
+                if (newTab && newTab.id) {
+                  managedTabs.add(newTab.id);
+                  activeTargets.add(newTab.id);
+                  handledTargets.set(newTab.id, challengeUrl);
+                }
+              });
+            } else {
+              await clickContinueOnTab(target.webSocketDebuggerUrl, passkeyBlob);
+            }
           } catch (err) {
             console.warn('[passkey-watcher] Lỗi khi xử lý tab:', err && err.message);
           } finally {
             activeTargets.delete(target.id);
+            isProcessing = false;
           }
         });
+        break; // Mỗi chu kỳ chỉ xử lý tối đa 1 challenge
       }
-    } catch (_) {}
-  }, 1000);
+    } catch (_) {
+      isProcessing = false;
+    }
+  }, 350);
 
   child.once('exit', () => {
     stopped = true;

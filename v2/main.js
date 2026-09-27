@@ -23,6 +23,10 @@ const { gridBounds } = require('./window-layout');
 const net = require('node:net');
 const passkeyWatcher = require('./passkey-watcher');
 const adsVerification = require('./ads-verification');
+const adsVerificationBrowser = require('./ads-verification-browser');
+const gcpServers = require('./gcp-servers');
+const { queryPool, QuotaStopError, getTaskTimeoutMs, setTaskTimeoutMs } = require('./query-pool');
+const { registerPoolRoutes } = require('./pool-routes');
 
 const getFreePort = () => new Promise((resolve, reject) => {
   const srv = net.createServer();
@@ -570,8 +574,29 @@ const openTiledWindowsInProfile = trace.traced('openTiledWindowsInProfile', asyn
 
 const verifyAdsUrl = 'https://ads.google.com/aw/billing/advertiserverification';
 
-const verifyAdsProfile = trace.traced('verifyAdsProfile', async (id, url = null) => {
-  return openTiledWindowsInProfile(id, [url || verifyAdsUrl]);
+
+const prepareProfileForRestore = trace.traced('profile.prepareRestore', (id, dir) => {
+  const prefPath = path.join(dir, 'Default', 'Preferences');
+  if (!fs.existsSync(prefPath)) return;
+  try {
+    const raw = fs.readFileSync(prefPath, 'utf8');
+    const prefs = JSON.parse(raw);
+    let changed = false;
+    if (!prefs.profile) prefs.profile = {};
+    if (prefs.profile.exit_type !== 'Normal' || prefs.profile.exited_cleanly !== true) {
+      prefs.profile.exit_type = 'Normal';
+      prefs.profile.exited_cleanly = true;
+      changed = true;
+    }
+    if (!prefs.session || prefs.session.restore_on_startup !== 5) {
+      prefs.session = prefs.session || {};
+      prefs.session.restore_on_startup = 5;
+      changed = true;
+    }
+    if (changed) {
+      fs.writeFileSync(prefPath, JSON.stringify(prefs));
+    }
+  } catch (_) {}
 }, { profileArgument: 0 });
 
 const openProfile = trace.traced('openProfile', async (id, url = null, tiled = false) => {
@@ -586,6 +611,7 @@ const openProfile = trace.traced('openProfile', async (id, url = null, tiled = f
   if (!chrome.ready) throw new Error(chrome.error);
   const dir = store.directory(id);
   fs.mkdirSync(dir, { recursive: true });
+  prepareProfileForRestore(id, dir);
   let args = launchArgs(dir, url, profile.fingerprint);
   if (tiled) args = tiledArgs(id, args);
   try { args = await proxyArgs(id, args, profile.fingerprint); }
@@ -597,8 +623,7 @@ const openProfile = trace.traced('openProfile', async (id, url = null, tiled = f
   catch (error) { windowSlots.delete(id); await closeProxy(id); throw error; }
   running.set(id, child);
   runningPorts.set(id, port);
-  const details = accountDetails(id);
-  passkeyWatcher.startPasskeyWatcher(child, port, details.passkey, id);
+  passkeyWatcher.startPasskeyWatcher(child, port, () => accountDetails(id).passkey, id);
   child.once('exit', trace.traced('openProfile.exit', () => {
     if (running.get(id) === child) {
       running.delete(id);
@@ -631,6 +656,40 @@ const openProfile = trace.traced('openProfile', async (id, url = null, tiled = f
   child.unref();
   store.markOpened(id);
   broadcast();
+}, { profileArgument: 0 });
+
+const runAdsVerificationBrowser = trace.traced('runAdsVerificationBrowser', async (id, { mccId = null, url = null } = {}) => {
+  let port = runningPorts.get(id);
+  if (!port || !running.has(id)) {
+    await openProfile(id);
+    for (let i = 0; i < 30; i++) {
+      port = runningPorts.get(id);
+      if (port) break;
+      await new Promise(r => setTimeout(r, 200));
+    }
+  }
+
+  if (!port) {
+    throw new Error('Không thể kết nối cổng điều khiển trình duyệt của profile.');
+  }
+
+  const browser = await puppeteer.connect({
+    browserURL: `http://127.0.0.1:${port}`,
+    defaultViewport: null
+  });
+
+  try {
+    return await adsVerificationBrowser.startVerificationFlow(browser, { id, mccId, url });
+  } finally {
+    try { browser.disconnect(); } catch (_) {}
+  }
+}, { profileArgument: 0 });
+
+const verifyAdsProfile = trace.traced('verifyAdsProfile', async (id, options = null) => {
+  if (typeof options === 'object' && options !== null) {
+    return runAdsVerificationBrowser(id, options);
+  }
+  return runAdsVerificationBrowser(id, { url: options });
 }, { profileArgument: 0 });
 
 const openQueue = new OpenQueue({
@@ -754,12 +813,14 @@ else {
       handle('v2:verify-ads', trace.traced('ipc.verifyAds', input => {
         const id = (input && typeof input === 'object') ? input.id : input;
         const url = (input && typeof input === 'object' && input.url) ? input.url : verifyAdsUrl;
-        return openTiledWindowsInProfile(id, [url]);
+        const mccId = (input && typeof input === 'object' && input.mccId) ? input.mccId : null;
+        return runAdsVerificationBrowser(id, { mccId, url });
       }));
       handle('v2:verify-ads-batch', trace.traced('ipc.verifyAdsBatch', input => {
         const id = (input && typeof input === 'object') ? input.id : input;
         const urls = (input && typeof input === 'object' && Array.isArray(input.urls)) ? input.urls : [];
-        return openTiledWindowsInProfile(id, urls);
+        const mccId = (input && typeof input === 'object' && input.mccId) ? input.mccId : null;
+        return runAdsVerificationBrowser(id, { mccId, urls });
       }));
       handle('v2:get-totp', secret => gmailLogin.totp(secret));
       handle('v2:check-iphey', id => openProfile(id, 'https://iphey.com/'));
@@ -777,65 +838,57 @@ else {
         broadcast();
         return snapshot();
       });
-      handle('v2:gcp-ads-get', trace.traced('gcpAds.get', async () => {
-        let config = settings.gcpAdsConfig || {};
-        try {
-          const remoteConfig = await firebaseService.getGcpAdsConfigFromFirebase();
-          if (remoteConfig && (remoteConfig.clientId || remoteConfig.clientSecret || remoteConfig.developerToken || remoteConfig.refreshToken)) {
-            config = remoteConfig;
-            const next = { ...settings, gcpAdsConfig: config };
-            fs.writeFileSync(`${settingsFile}.tmp`, secretConfig.stringify(next));
-            fs.renameSync(`${settingsFile}.tmp`, settingsFile);
-            settings = next;
-          }
-        } catch (err) {
-          console.warn('[firebase] Không thể tải cấu hình từ Firebase (dùng cấu hình cục bộ):', err.message);
-        }
-        return {
-          clientId: config.clientId || '',
-          clientSecret: config.clientSecret || '',
-          developerToken: config.developerToken || '',
-          refreshToken: config.refreshToken || '',
-          loginCustomerId: config.loginCustomerId || '',
-        };
-      }));
-      handle('v2:gcp-ads-save', trace.traced('gcpAds.save', async input => {
-        const clientId = typeof input?.clientId === 'string' ? input.clientId.trim() : '';
-        const clientSecret = typeof input?.clientSecret === 'string' ? input.clientSecret.trim() : '';
-        const developerToken = typeof input?.developerToken === 'string' ? input.developerToken.trim() : '';
-        const refreshToken = typeof input?.refreshToken === 'string' ? input.refreshToken.trim() : '';
-        const loginCustomerId = typeof input?.loginCustomerId === 'string' ? input.loginCustomerId.trim() : '';
-        const gcpAdsConfig = { clientId, clientSecret, developerToken, refreshToken, loginCustomerId };
-        
-        // 1. Lưu an toàn vào settings.json cục bộ
-        const next = { ...settings, gcpAdsConfig };
+      // Server GCP (Ads API): settings.gcpAds = { activeId, servers }; settings.gcpAdsConfig là định dạng cũ (1 GCP)
+      const localGcpAds = () => gcpServers.normalize(settings.gcpAds || gcpServers.fromLegacy(settings.gcpAdsConfig));
+      const persistGcpAds = data => {
+        const { gcpAdsConfig: _legacy, ...rest } = settings;
+        const next = { ...rest, gcpAds: gcpServers.normalize(data) };
         fs.writeFileSync(`${settingsFile}.tmp`, secretConfig.stringify(next));
         fs.renameSync(`${settingsFile}.tmp`, settingsFile);
         settings = next;
+        return next.gcpAds;
+      };
+      const pullGcpAdsFromFirebase = async () => {
+        const remote = await firebaseService.getGcpAdsServersFromFirebase();
+        return remote ? persistGcpAds(remote) : null;
+      };
+      // Server đang dùng; cục bộ thiếu thông tin thì thử lấy lại từ Firebase
+      const activeGcpServer = async isReady => {
+        let server = gcpServers.active(localGcpAds());
+        if (!server || !isReady(server)) {
+          try {
+            await pullGcpAdsFromFirebase();
+            server = gcpServers.active(localGcpAds());
+          } catch (_) {}
+        }
+        return server || {};
+      };
+      handle('v2:gcp-ads-get', trace.traced('gcpAds.get', async () => {
+        try {
+          await pullGcpAdsFromFirebase();
+        } catch (err) {
+          console.warn('[firebase] Không thể tải cấu hình từ Firebase (dùng cấu hình cục bộ):', err.message);
+        }
+        return localGcpAds();
+      }));
+      handle('v2:gcp-ads-save', trace.traced('gcpAds.save', async input => {
+        // 1. Lưu an toàn vào settings.json cục bộ
+        const gcpAds = persistGcpAds(input);
 
         // 2. Đồng bộ lên Firebase Realtime Database
         try {
-          await firebaseService.saveGcpAdsConfigToFirebase(gcpAdsConfig);
+          await firebaseService.saveGcpAdsServersToFirebase(gcpAds);
         } catch (err) {
           console.error('[firebase] Lỗi đồng bộ lên Firebase:', err.message);
           throw new Error(`Đã lưu trên máy nhưng lỗi đồng bộ Firebase: ${err.message}`);
         }
 
-        return gcpAdsConfig;
+        return gcpAds;
       }));
       handle('v2:gcp-ads-auth-link', trace.traced('gcpAds.authLink', async () => {
-        let config = settings.gcpAdsConfig || {};
+        const config = await activeGcpServer(s => s.clientId);
         if (!config.clientId) {
-          try {
-            const remote = await firebaseService.getGcpAdsConfigFromFirebase();
-            if (remote && remote.clientId) {
-              config = remote;
-              settings = { ...settings, gcpAdsConfig: config };
-            }
-          } catch (_) {}
-        }
-        if (!config.clientId) {
-          throw new Error('Chưa cấu hình Client ID. Vui lòng bấm "Cài đặt GCP" để nhập Client ID trước.');
+          throw new Error('Server GCP đang dùng chưa có Client ID. Vui lòng bấm "Cài đặt" để nhập Client ID trước.');
         }
         const redirectUri = 'http://127.0.0.1';
         const params = new URLSearchParams({
@@ -847,7 +900,7 @@ else {
           prompt: 'consent',
         });
         const url = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-        return { url, redirectUri, clientId: config.clientId };
+        return { url, redirectUri, clientId: config.clientId, serverName: config.name };
       }));
       handle('v2:gcp-ads-exchange-code', trace.traced('gcpAds.exchangeCode', async input => {
         const raw = typeof input?.codeOrUrl === 'string' ? input.codeOrUrl.trim() : '';
@@ -865,19 +918,9 @@ else {
           }
         }
 
-        let config = settings.gcpAdsConfig || {};
+        const config = await activeGcpServer(s => s.clientId && s.clientSecret);
         if (!config.clientId || !config.clientSecret) {
-          try {
-            const remote = await firebaseService.getGcpAdsConfigFromFirebase();
-            if (remote && remote.clientId && remote.clientSecret) {
-              config = remote;
-              settings = { ...settings, gcpAdsConfig: config };
-            }
-          } catch (_) {}
-        }
-
-        if (!config.clientId || !config.clientSecret) {
-          throw new Error('Thiếu Client ID hoặc Client Secret trong Cài đặt GCP.');
+          throw new Error('Server GCP đang dùng thiếu Client ID hoặc Client Secret trong Cài đặt.');
         }
 
         const redirectUri = input?.redirectUri || 'http://127.0.0.1';
@@ -903,37 +946,56 @@ else {
           throw new Error('Google không trả về Refresh Token (có thể do tài khoản đã được cấp quyền trước đó). Hãy đăng nhập lại với prompt=consent hoặc gỡ quyền app tại myaccount.google.com/permissions rồi thử lại.');
         }
 
-        const updatedConfig = {
-          ...config,
-          refreshToken: data.refresh_token,
-        };
-
-        const next = { ...settings, gcpAdsConfig: updatedConfig };
-        fs.writeFileSync(`${settingsFile}.tmp`, secretConfig.stringify(next));
-        fs.renameSync(`${settingsFile}.tmp`, settingsFile);
-        settings = next;
+        const current = localGcpAds();
+        const gcpAds = persistGcpAds({
+          ...current,
+          servers: current.servers.map(s => (s.id === config.id ? { ...s, refreshToken: data.refresh_token } : s)),
+        });
 
         try {
-          await firebaseService.saveGcpAdsConfigToFirebase(updatedConfig);
+          await firebaseService.saveGcpAdsServersToFirebase(gcpAds);
         } catch (err) {
           console.warn('[firebase] Lỗi lưu refresh token lên Firebase:', err.message);
         }
 
-        return { ok: true, refreshToken: data.refresh_token };
+        return { ok: true, refreshToken: data.refresh_token, serverName: config.name };
       }));
-      handle('v2:gcp-ads-scan-verification', trace.traced('gcpAds.scanVerification', async mccId => {
-        let config = settings.gcpAdsConfig || {};
-        if (!config.clientId || !config.refreshToken) {
-          try {
-            const remote = await firebaseService.getGcpAdsConfigFromFirebase();
-            if (remote && remote.clientId) {
-              config = remote;
-              settings = { ...settings, gcpAdsConfig: config };
-            }
-          } catch (_) {}
+      // Pool đang back off vì quota -> dừng cả lượt, báo thời gian chờ; không thử lại ngay
+      const stopOnQuota = trace.traced('gcpAds.stopOnQuota', async run => {
+        try {
+          return await run();
+        } catch (error) {
+          if (!(error instanceof QuotaStopError)) throw error;
+          const sec = Math.ceil(queryPool.blockedForMs / 1000);
+          throw new Error(`${error.message}${sec > 0 ? ` Pool tạm dừng ~${sec} giây, thử lại sau.` : ''}`);
         }
-        return await adsVerification.scanMccVerification(config, mccId);
+      });
+      handle('v2:gcp-ads-scan-verification', trace.traced('gcpAds.scanVerification', async mccId => {
+        const config = await activeGcpServer(s => s.clientId && s.refreshToken);
+        return await stopOnQuota(() => adsVerification.scanMccVerification(config, mccId));
       }));
+      handle('v2:gcp-ads-scan-suspended', trace.traced('gcpAds.scanSuspended', async mccId => {
+        const config = await activeGcpServer(s => s.clientId && s.refreshToken);
+        return await stopOnQuota(() => adsVerification.scanMccSuspended(config, mccId));
+      }));
+      handle('v2:gcp-ads-list-mccs', trace.traced('gcpAds.listMccs', async () => {
+        const config = await activeGcpServer(s => s.clientId && s.refreshToken);
+        return await stopOnQuota(() => adsVerification.listAccessibleMccs(config));
+      }));
+      // Pool worker: GET /api/pool/stats, GET /api/pool/config, PUT /api/pool/config — ai cũng đổi được, lưu Firebase
+      registerPoolRoutes(handle, {
+        pool: queryPool,
+        prefix: '/api/pool',
+        taskTimeout: { get: getTaskTimeoutMs, set: setTaskTimeoutMs },
+        load: () => firebaseService.getPoolConfigFromFirebase(),
+        persist: async cfg => {
+          try {
+            await firebaseService.savePoolConfigToFirebase(cfg);
+          } catch (err) {
+            throw new Error(`Đã áp dụng cấu hình pool nhưng lỗi lưu Firebase: ${err.message}`);
+          }
+        },
+      });
       handle('v2:open-external', trace.traced('system.openExternal', async url => {
         if (!url || typeof url !== 'string' || !url.startsWith('https://')) {
           throw new Error('URL không hợp lệ.');

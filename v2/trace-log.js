@@ -62,7 +62,7 @@ function traced(name, fn, options = {}) {
   };
 }
 function recordUi(record) {
-  if (!record || !/^renderer\.(render|updateSelection|runAction|fillFingerprint|windowSizeChange|saveFingerprint|threadLimit|cancelQueue)$/.test(record.name) ||
+  if (!record || !/^renderer\.(render|updateSelection|runAction|fillFingerprint|windowSizeChange|saveFingerprint|threadLimit|cancelQueue|pool[A-Za-z]+)$/.test(record.name) ||
       !validProfileId(record.callId) || !['trace in', 'trace out'].includes(record.event)) return;
   const clean = { name: record.name, callId: record.callId, event: record.event };
   if (record.event === 'trace out') {
