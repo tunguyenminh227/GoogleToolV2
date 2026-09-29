@@ -16,26 +16,50 @@ const PASSKEY_CREATE_LABELS = ['create a passkey', 'tạo mã xác thực', 't�
 const PASSKEY_CONTINUE_LABELS = ['continue', 'tiếp tục', 'create a passkey', 'tạo mã xác thực', 'tạo khóa truy cập', 'tạo passkey'];
 const PASSKEY_DONE_LABELS = ['done', 'xong', 'hoàn tất'];
 
-// Snippet JS từ V1: tìm phần tử khớp text và THỰC SỰ bấm được qua elementFromPoint (main.js:3694-3740)
+// Snippet JS: tìm phần tử khớp text và THỰC SỰ bấm được qua elementFromPoint (tối ưu từ V1 main.js:3694-3740)
 const clickableTextRectJs = (needles, preferBottom = false) => `(function(){
   var needles = ${JSON.stringify(needles)};
-  function norm(s){ return ((s || '')).replace(/[‘’ʼ]/g, "'").trim().toLowerCase(); }
+  var preferBottom = ${Boolean(preferBottom)};
+  function norm(s){ return ((s || '')).replace(/[‘’ʼ]/g, "'").replace(/^\\+\\s*/, '').trim().toLowerCase(); }
   var nn = needles.map(norm);
+
+  // Nếu có modal/dialog đang mở, ưu tiên tìm bên trong modal
+  var modal = document.querySelector('[role="dialog"], dialog, [aria-modal="true"]');
+  var root = modal || document;
+
   var all = Array.prototype.slice.call(
-    document.querySelectorAll('button, a, [role=button], [role=link], [jsaction], [data-challengetype]'));
+    root.querySelectorAll('button, a, [role=button], [role=link], [jsaction], [data-challengetype], div[role=button], span[role=button]'));
   var cands = [];
   for (var i = 0; i < all.length; i++) {
     var el = all[i];
-    var t = norm(el.innerText || el.textContent);
-    if (!t) continue;
-    if (!nn.some(function(n){ return n && t.indexOf(n) !== -1; })) continue;
+    var rawText = (el.innerText || el.textContent || '').trim();
+    var t = norm(rawText);
+    if (!t || t.length > 50) continue; // loại bỏ các khối văn bản dài/đoạn giải thích
+    if (!nn.some(function(n){ return n && (t === n || t.indexOf(n) !== -1); })) continue;
     var r0 = el.getBoundingClientRect();
-    cands.push({ el: el, t: t, area: Math.max(1, r0.width) * Math.max(1, r0.height) });
+    if (r0.width <= 1 || r0.height <= 1) continue;
+    if (preferBottom && !modal) {
+      var banner = el.closest('c-wiz, section, [role="region"], div[jsaction]');
+      var bannerText = banner ? (banner.innerText || banner.textContent || '').toLowerCase() : '';
+      if (bannerText.indexOf('on this device') !== -1 || bannerText.indexOf('trên thiết bị này') !== -1 ||
+          bannerText.indexOf('speed up your sign in') !== -1 || bannerText.indexOf('tăng tốc độ đăng nhập') !== -1) {
+        continue;
+      }
+    }
+    cands.push({ el: el, t: t, rawText: rawText, y: r0.top + window.scrollY, area: Math.max(1, r0.width) * Math.max(1, r0.height) });
   }
+
   cands.sort(function(a, b){
+    if (preferBottom && !modal) {
+      var aPlus = a.rawText.indexOf('+') !== -1;
+      var bPlus = b.rawText.indexOf('+') !== -1;
+      if (aPlus !== bPlus) return bPlus ? 1 : -1;
+      return b.y - a.y;
+    }
     if (a.t.length !== b.t.length) return a.t.length - b.t.length;
     return a.area - b.area;
   });
+
   var info = [];
   for (var j = 0; j < cands.length; j++) {
     var el2 = cands[j].el;
@@ -48,7 +72,8 @@ const clickableTextRectJs = (needles, preferBottom = false) => `(function(){
     }
     var top = document.elementFromPoint(cx, cy);
     if (!top) { info.push('noTop@' + cx + ',' + cy); continue; }
-    if (top === el2 || el2.contains(top)) {
+    var btnMatch = (top.closest && el2.closest && top.closest('button, [role="button"]') && top.closest('button, [role="button"]') === el2.closest('button, [role="button"]'));
+    if (top === el2 || el2.contains(top) || btnMatch) {
       var cls = ((top.className || '') + '').toString().slice(0, 24);
       return { x: cx, y: cy, tag: (top.tagName || '') + '.' + cls, n: cands.length };
     }
@@ -58,10 +83,12 @@ const clickableTextRectJs = (needles, preferBottom = false) => `(function(){
   return { x: null, y: null, n: cands.length, info: info.join(' | ') };
 })()`;
 
-// Snippet JS từ V1: fallback click bằng dispatch Pointer/Mouse/Click event đầy đủ (main.js:2879-2925)
+// Snippet JS: fallback click bằng dispatch Pointer/Mouse/Click event đầy đủ (main.js:2879-2925)
 const clickOptionByTextJs = (needles, preferBottom = false) => `(function(){
   var needles = ${JSON.stringify(needles)};
-  function norm(s){ return ((s || '')).replace(/[‘’ʼ]/g, "'").trim().toLowerCase(); }
+  var preferBottom = ${Boolean(preferBottom)};
+  function norm(s){ return ((s || '')).replace(/[‘’ʼ]/g, "'").replace(/^\\+\\s*/, '').trim().toLowerCase(); }
+  var nn = needles.map(norm);
   function vis(el){
     if (!el || el.offsetParent === null) return false;
     var r = el.getBoundingClientRect();
@@ -70,19 +97,41 @@ const clickOptionByTextJs = (needles, preferBottom = false) => `(function(){
     if (st && st.visibility === 'hidden') return false;
     return true;
   }
+  var modal = document.querySelector('[role="dialog"], dialog, [aria-modal="true"]');
+  var root = modal || document;
   var all = Array.prototype.slice.call(
-    document.querySelectorAll('li, a, button, [role=link], [role=button], [data-challengetype], span, div'));
-  var match = null;
+    root.querySelectorAll('li, a, button, [role=link], [role=button], [data-challengetype], span, div'));
+  var matches = [];
   for (var i = 0; i < all.length; i++) {
     var el = all[i];
     if (!vis(el)) continue;
-    var t = norm(el.innerText || el.textContent);
-    if (!t) continue;
-    if (needles.some(function(n){ return t.indexOf(n) !== -1; })) {
-      if (!match || t.length < norm(match.innerText || match.textContent).length) match = el;
+    var rawText = (el.innerText || el.textContent || '').trim();
+    var t = norm(rawText);
+    if (!t || t.length > 50) continue;
+    if (nn.some(function(n){ return n && (t === n || t.indexOf(n) !== -1); })) {
+      if (preferBottom && !modal) {
+        var banner = el.closest('c-wiz, section, [role="region"], div[jsaction]');
+        var bannerText = banner ? (banner.innerText || banner.textContent || '').toLowerCase() : '';
+        if (bannerText.indexOf('on this device') !== -1 || bannerText.indexOf('trên thiết bị này') !== -1 ||
+            bannerText.indexOf('speed up your sign in') !== -1 || bannerText.indexOf('tăng tốc độ đăng nhập') !== -1) {
+          continue;
+        }
+      }
+      var r0 = el.getBoundingClientRect();
+      matches.push({ el: el, t: t, rawText: rawText, y: r0.top + window.scrollY });
     }
   }
-  if (!match) return 'no-match';
+  if (!matches.length) return 'no-match';
+  matches.sort(function(a, b){
+    if (preferBottom && !modal) {
+      var aPlus = a.rawText.indexOf('+') !== -1;
+      var bPlus = b.rawText.indexOf('+') !== -1;
+      if (aPlus !== bPlus) return bPlus ? 1 : -1;
+      return b.y - a.y;
+    }
+    return a.t.length - b.t.length;
+  });
+  var match = matches[0].el;
   function fire(el){
     try { el.scrollIntoView({ block: 'center' }); } catch(e){}
     var r = el.getBoundingClientRect();
@@ -113,7 +162,7 @@ const clickOptionByTextJs = (needles, preferBottom = false) => `(function(){
   return 'clicked:' + norm(target.innerText || target.textContent).slice(0, 40);
 })()`;
 
-// Thao tác click tọa độ chuột qua CDP Input.dispatchMouseEvent (chuẩn V1)
+// Thao tác click tọa độ chuột qua CDP Input.dispatchMouseEvent
 const fclickAt = t('passkey.clickAt', async (page, client, x, y) => {
   if (client && typeof client.send === 'function') {
     await client.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y });
@@ -131,10 +180,10 @@ const fclickAt = t('passkey.clickAt', async (page, client, x, y) => {
 });
 
 // Click nhãn theo luồng V1: clickableTextRectJs + fclickAt trước, fallback clickOptionByTextJs
-const fClickLabel = t('passkey.fClickLabel', async (page, client, labels, tries = 8, scrollBottom = false, timeoutMs = 30000) => {
+const fClickLabel = t('passkey.fClickLabel', async (page, client, labels, tries = 8, scrollBottom = false, timeoutMs = 30000, preferBottom = false) => {
   const shortWait = timeoutMs <= 500;
   for (let i = 0; i < tries; i++) {
-    if ((scrollBottom || i >= 2) && typeof page.evaluate === 'function') {
+    if ((scrollBottom || (preferBottom && i >= 1) || i >= 2) && typeof page.evaluate === 'function') {
       try {
         await page.evaluate(() => {
           if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
@@ -147,7 +196,7 @@ const fClickLabel = t('passkey.fClickLabel', async (page, client, labels, tries 
 
     if (typeof page.evaluate === 'function') {
       try {
-        const r = await page.evaluate(clickableTextRectJs(labels));
+        const r = await page.evaluate(clickableTextRectJs(labels, preferBottom));
         if (r === true) return true;
         if (r && typeof r.x === 'number') {
           await fclickAt(page, client, r.x, r.y);
@@ -156,7 +205,7 @@ const fClickLabel = t('passkey.fClickLabel', async (page, client, labels, tries 
       } catch (_) {}
 
       try {
-        const res = await page.evaluate(clickOptionByTextJs(labels));
+        const res = await page.evaluate(clickOptionByTextJs(labels, preferBottom));
         if (res === true || (typeof res === 'string' && res.indexOf('clicked') === 0)) {
           return true;
         }
@@ -164,22 +213,22 @@ const fClickLabel = t('passkey.fClickLabel', async (page, client, labels, tries 
     }
 
     if (shortWait) break;
-    await sleep(1200);
+    await sleep(1000);
   }
   return false;
 });
 
 const clickBottomPasskeyButton = t('passkey.clickBottomButton', async (page, client, timeoutMs = 30000) => {
-  return fClickLabel(page, client, PASSKEY_CREATE_LABELS, 4, true, timeoutMs);
+  return fClickLabel(page, client, PASSKEY_CREATE_LABELS, 4, true, timeoutMs, true);
 });
 
 const clickModalPasskeyButton = t('passkey.clickModalButton', async (page, client, timeoutMs = 30000) => {
-  const res = await fClickLabel(page, client, PASSKEY_CONTINUE_LABELS, 4, false, timeoutMs);
+  const res = await fClickLabel(page, client, PASSKEY_CONTINUE_LABELS, 6, false, timeoutMs, false);
   return { success: !!res };
 });
 
 const clickLabelRobust = t('passkey.clickLabel', async (page, labels, tries = 8, scrollBottom = false, timeoutMs = 30000) => {
-  return fClickLabel(page, null, labels, tries, scrollBottom, timeoutMs);
+  return fClickLabel(page, null, labels, tries, scrollBottom, timeoutMs, false);
 });
 
 const passReauthChallenge = t('passkey.passReauth', async (page, account, options) => {
@@ -389,16 +438,29 @@ const enablePasskey = t('passkey.enable', async (browser, account, onStatus, inp
           await sleep(60);
           await fsend('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', clickCount: 1 });
         };
-        // Tái dùng nguyên bộ snippet V1: clickableTextRectJs + fclickAt, fallback clickOptionByTextJs
-        const rawClickLabel = async (labels, tries, scrollBottom) => {
+
+        const rawClickLabel = async (labels, tries, scrollBottom, preferBottom = false, labelName = '') => {
           for (let i = 0; i < tries; i++) {
-            if (scrollBottom) { await fevaluate('window.scrollTo(0, document.body.scrollHeight)'); await sleep(400); }
-            const r = await fevaluate(clickableTextRectJs(labels));
-            if (r && typeof r.x === 'number') { await fclickAt(r.x, r.y); return true; }
-            const res = await fevaluate(clickOptionByTextJs(labels));
-            if (res && res.indexOf('clicked') === 0) return true;
-            await sleep(1200);
+            if (scrollBottom) {
+              await fevaluate('window.scrollTo(0, document.body.scrollHeight)');
+              await sleep(400);
+            }
+            const r = await fevaluate(clickableTextRectJs(labels, preferBottom));
+            if (r && typeof r.x === 'number') {
+              console.log(`[passkey] 🎯 Đã tìm thấy "${labelName || labels[0]}" tại (${r.x}, ${r.y}), đang click chuột...`);
+              await fclickAt(r.x, r.y);
+              await sleep(500);
+              return true;
+            }
+            const res = await fevaluate(clickOptionByTextJs(labels, preferBottom));
+            if (res && res.indexOf('clicked') === 0) {
+              console.log(`[passkey] 🎯 Đã click JS "${labelName || labels[0]}": ${res}`);
+              await sleep(500);
+              return true;
+            }
+            await sleep(1000);
           }
+          console.warn(`[passkey] ⚠️ Không tìm thấy nhãn "${labelName || labels[0]}" sau ${tries} lần thử.`);
           return false;
         };
 
@@ -460,22 +522,34 @@ const enablePasskey = t('passkey.enable', async (browser, account, onStatus, inp
             }
             await sleep(1500);
 
-            console.log('[passkey] (3) bấm nút tạo Passkey trên tab mới (click một bước như V1)...');
-            const createClicked = await rawClickLabel(PASSKEY_CREATE_LABELS, 8, false);
+            console.log('[passkey] (3.1) Bấm nút "+ Create a passkey" ở dưới (loại bỏ banner trên)...');
+            const createClicked = await rawClickLabel(PASSKEY_CREATE_LABELS, 8, true, true, '+ Create a passkey (ở dưới)');
             if (!createClicked) {
               console.warn('[passkey] Tab mới: KHÔNG bấm được nút tạo Passkey -> hủy.');
               throw failure('create_not_found', 'Không tìm thấy nút tạo Passkey trên trang Google.');
             }
-            await sleep(2500); // để ceremony WebAuthn ảo tự hoàn tất
 
-            await rawClickLabel(PASSKEY_CONTINUE_LABELS, 4, false);
-            await sleep(1000);
-            await rawClickLabel(PASSKEY_DONE_LABELS, 4, false);
+            console.log('[passkey] (3.2) Chờ modal "Create a passkey for your Google Account" mở ra...');
             await sleep(1500);
+
+            console.log('[passkey] (3.3) Bấm nút "Create a passkey" trên modal popup...');
+            const modalClicked = await rawClickLabel(PASSKEY_CONTINUE_LABELS, 8, false, false, 'Create a passkey (trên modal)');
+            if (!modalClicked) {
+              console.warn('[passkey] Không bấm được nút trên modal.');
+            }
+
+            console.log('[passkey] (3.4) Chờ ceremony WebAuthn hoàn tất (2.5s)...');
+            await sleep(2500);
+
+            console.log('[passkey] (3.5) Kiểm tra nút Done / Tiếp tục nếu có...');
+            await rawClickLabel(PASSKEY_DONE_LABELS, 3, false, false, 'Done');
+            await sleep(800);
+            await rawClickLabel(['continue', 'tiếp tục'], 3, false, false, 'Continue');
+            await sleep(1200);
 
             let creds = [];
             for (let attempt = 0; attempt < 8 && !creds.length; attempt++) {
-              console.log(`[passkey] (4) dò credential trên tab mới, lần ${attempt + 1}/8.`);
+              console.log(`[passkey] (4) dò credential trên tab mới, lần ${attempt + 1}/8...`);
               const cr = await fsend('WebAuthn.getCredentials', { authenticatorId });
               creds = (cr && cr.result && cr.result.credentials) || [];
               if (!creds.length) await sleep(1000);
@@ -532,16 +606,17 @@ const enablePasskey = t('passkey.enable', async (browser, account, onStatus, inp
     await freshPage.goto(passkeyPageUrl, { waitUntil: 'domcontentloaded', timeout: options.timeoutMs });
     await sleep(options.timeoutMs <= 500 ? 50 : 1500);
 
-    const createClicked = await fClickLabel(freshPage, client, PASSKEY_CREATE_LABELS, 4, false, options.timeoutMs);
+    const createClicked = await fClickLabel(freshPage, client, PASSKEY_CREATE_LABELS, 4, true, options.timeoutMs, true);
     if (!createClicked) {
       throw failure('create_not_found', 'Không tìm thấy nút tạo Passkey trên trang Google.');
     }
+    await sleep(options.timeoutMs <= 500 ? 50 : 1500);
+
+    await fClickLabel(freshPage, client, PASSKEY_CONTINUE_LABELS, 4, false, options.timeoutMs, false);
     await sleep(options.timeoutMs <= 500 ? 50 : 2500);
 
-    await fClickLabel(freshPage, client, PASSKEY_CONTINUE_LABELS, 4, false, options.timeoutMs);
+    await fClickLabel(freshPage, client, PASSKEY_DONE_LABELS, 4, false, options.timeoutMs, false);
     await sleep(options.timeoutMs <= 500 ? 20 : 1000);
-    await fClickLabel(freshPage, client, PASSKEY_DONE_LABELS, 4, false, options.timeoutMs);
-    await sleep(options.timeoutMs <= 500 ? 20 : 1500);
 
     let creds = [];
     if (client && authenticatorId) {
