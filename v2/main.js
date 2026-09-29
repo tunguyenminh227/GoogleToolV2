@@ -349,12 +349,15 @@ const enablePasskeyProfile = trace.traced('enablePasskeyProfile', async id => {
     let args = launchArgs(store.directory(id), null, profile.fingerprint);
     args = tiledArgs(id, args);
     args = await proxyArgs(id, args, profile.fingerprint);
+    const port = await getFreePort();
+    args.push(`--remote-debugging-port=${port}`);
+    runningPorts.set(id, port);
     try {
       browser = await puppeteer.launch({ executablePath: chrome.path, args, ignoreDefaultArgs: true,
         headless: false, pipe: true, defaultViewport: null, timeout: 30000,
         handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false });
     } catch {
-      windowSlots.delete(id); await closeProxy(id);
+      windowSlots.delete(id); await closeProxy(id); runningPorts.delete(id);
       status('error', 'Không kết nối được Chromium');
       throw new Error('Không kết nối được Chromium để bật Passkey.');
     }
@@ -380,7 +383,8 @@ const enablePasskeyProfile = trace.traced('enablePasskeyProfile', async id => {
       {
         typingDelayMs: settings.gmailTypingDelayMs ?? 90,
         timeoutMs: settings.gmailStepTimeoutMs ?? 30000,
-        twoCaptchaApiKey: settings.twoCaptchaApiKey
+        twoCaptchaApiKey: settings.twoCaptchaApiKey,
+        port
       });
     if (result && result.passkeyBlob) {
       savePasskey(id, result.passkeyBlob);
@@ -398,6 +402,7 @@ const enablePasskeyProfile = trace.traced('enablePasskeyProfile', async id => {
       }
     } finally {
       if (!browser) { windowSlots.delete(id); await closeProxy(id); }
+      runningPorts.delete(id);
       deleting.delete(id);
     }
   }
