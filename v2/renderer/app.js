@@ -7,6 +7,7 @@ const opening = new Set();
 const selected = new Set();
 let sortKey = 'stt';
 let sortDirection = 1;
+let selectedMailStatus = 'all';
 let visibleIds = [];
 let selectedAction = null;
 let actionBusy = false;
@@ -263,6 +264,14 @@ $('selectAll').addEventListener('change', event => {
   visibleIds.forEach(id => event.target.checked ? selected.add(id) : selected.delete(id));
   render();
 });
+$('mailStatusTabs')?.addEventListener('click', window.uiTrace('renderer.statusFilter', event => {
+  const button = event.target.closest('[data-status]');
+  if (!button) return;
+  const status = button.dataset.status;
+  if (selectedMailStatus === status) return;
+  selectedMailStatus = status;
+  render();
+}));
 document.querySelectorAll('[data-sort]').forEach(button => button.addEventListener('click', () => {
   sortDirection = sortKey === button.dataset.sort ? -sortDirection : 1;
   sortKey = button.dataset.sort;
@@ -314,6 +323,17 @@ const mailLabels = {
   passkey_creating: 'Đang tạo Passkey…'
 };
 
+function getProfileCategory(p) {
+  if (!p) return 'new';
+  if (p.mailStatus === 'rejected') return 'rejected';
+  if (p.mailStatus === 'verify_phone') return 'verify_phone';
+  if (p.mailStatus === 'manual') return 'manual';
+  if (p.mailStatus === 'success' || p.mailStatus === 'passkey_enabled') return 'success';
+  if (p.mailStatus === 'error' || Boolean(p.mailError)) return 'error';
+  if (!p.mailStatus) return 'new';
+  return p.mailStatus;
+}
+
 const render = window.uiTrace('renderer.render', function (data = state) {
   state = data;
   const engineLabel = state.engineLabel || 'Chromium';
@@ -324,8 +344,39 @@ const render = window.uiTrace('renderer.render', function (data = state) {
   $('chromeStatus').textContent = state.chromePath ? `Chromium ${state.chromeVersion}` : `Cần cài ${engineLabel}`;
   $('chromeStatus').title = state.chromeError || state.chromePath;
   $('chromeDot').classList.toggle('ready', Boolean(state.chromePath));
+
+  const counts = {
+    all: profiles.length,
+    new: 0,
+    success: 0,
+    error: 0,
+    rejected: 0,
+    verify_phone: 0,
+    manual: 0
+  };
+  for (const p of profiles) {
+    const cat = getProfileCategory(p);
+    if (counts[cat] !== undefined) counts[cat]++;
+  }
+  document.querySelectorAll('#mailStatusTabs [data-status]').forEach(tab => {
+    const status = tab.dataset.status;
+    const badge = tab.querySelector('.tab-count');
+    const cnt = counts[status] ?? 0;
+    if (badge) {
+      badge.textContent = cnt;
+      badge.classList.toggle('has-count', cnt > 0);
+    }
+    const isSel = status === selectedMailStatus;
+    tab.classList.toggle('selected', isSel);
+    tab.setAttribute('aria-selected', isSel ? 'true' : 'false');
+  });
+
   const query = $('search').value.trim().toLocaleLowerCase('vi');
-  const visible = profiles.filter(p =>
+  const filteredByStatus = selectedMailStatus === 'all'
+    ? profiles
+    : profiles.filter(p => getProfileCategory(p) === selectedMailStatus);
+
+  const visible = filteredByStatus.filter(p =>
     [p.name, p.email, p.recoveryMail, p.notes, p.notes2, p.passkey, p.mailError, mailLabels[p.mailStatus], !p.mailStatus ? 'NEW' : ''].some(value => String(value || '').toLocaleLowerCase('vi').includes(query))).slice();
   const order = new Map(profiles.map((p, index) => [p.id, index + 1]));
   visible.sort((a, b) => {
@@ -495,7 +546,7 @@ $('createForm').addEventListener('submit', async event => {
   }
 });
 
-$('search').addEventListener('input', () => render());
+$('search').addEventListener('input', window.uiTrace('renderer.search', () => render()));
 $('chooseChrome').addEventListener('click', async () => {
   $('chooseChrome').disabled = true;
   try { render(await window.googleTool.chooseChrome()); }
@@ -825,6 +876,7 @@ $('btnExchangeAdsCode').addEventListener('click', async () => {
 // Dialog Quét MCC — dùng chung cho "Xác minh tài khoản ads" (verify) và "Kháng" (appeal)
 let currentSelectedProfilesForVerify = [];
 let currentScannedVerifyAccounts = [];
+let currentScannedMccId = null;
 const VERIFY_MODES = {
   verify: {
     title: 'Xác minh tài khoản Google Ads',
@@ -970,6 +1022,7 @@ $('btnScanMcc').addEventListener('click', window.uiTrace('renderer.scanMccVerifi
   try {
     const res = await mode.scan(mccId);
     currentScannedVerifyAccounts = mode.list(res);
+    currentScannedMccId = res.mccId || res.formattedMccId || mccId;
 
     const total = res.totalAccounts || 0;
     const needCount = currentScannedVerifyAccounts.length;
@@ -1063,22 +1116,18 @@ $('verifyAdsTableBody').addEventListener('click', window.uiTrace('renderer.table
     if (!url) return;
 
     const chosenProfileId = $('verifyProfileSelect')?.value || currentSelectedProfilesForVerify[0];
-    const mccId = ($('mccSelect').hidden ? $('mccIdInput').value : $('mccSelect').value).trim();
+    const rawMcc = ($('mccSelect').hidden ? $('mccIdInput').value : $('mccSelect').value).trim();
+    const mccId = rawMcc || currentScannedMccId;
     if (chosenProfileId) {
       try {
-        toast(`Đang điều hướng profile tới ads.google.com và chọn MCC...`);
-        await window.googleTool.verifyAds({ id: chosenProfileId, url, mccId: mccId || id });
-        toast(`Đã chọn MCC thành công trên profile.`);
+        toast(`Đang mở profile và chuyển tab hiện tại tới Google Ads...`);
+        await window.googleTool.verifyAds({ id: chosenProfileId, url: 'https://ads.google.com/', mccId: mccId || id, customerId: id, actionUrl: url });
+        toast(`Đã chuyển tới trang Google Ads thành công.`);
       } catch (err) {
         toast(err.message, true);
       }
     } else {
-      try {
-        toast(`Đang mở link ${verifyMode.noun} tài khoản ${id}...`);
-        await window.googleTool.openExternal(url);
-      } catch (err) {
-        toast(err.message, true);
-      }
+      toast('Vui lòng chọn một profile trong mục "Profile thực hiện" phía trên.', true);
     }
     return;
   }
@@ -1112,19 +1161,26 @@ $('btnOpenSelectedProfilesVerify').addEventListener('click', window.uiTrace('ren
   const btn = $('btnOpenSelectedProfilesVerify');
   btn.disabled = true;
   const chosenProfileId = $('verifyProfileSelect')?.value || currentSelectedProfilesForVerify[0];
-  const mccId = ($('mccSelect').hidden ? $('mccIdInput').value : $('mccSelect').value).trim();
+  const rawMcc = ($('mccSelect').hidden ? $('mccIdInput').value : $('mccSelect').value).trim();
+  const mccId = rawMcc || currentScannedMccId;
   try {
     if (chosenProfileId) {
-      toast(`Đang điều hướng profile tới ads.google.com và chọn MCC...`);
-      await window.googleTool.verifyAds({ id: chosenProfileId, mccId });
-      toast(`Đã chọn MCC thành công trên profile.`);
+      toast(`Đang mở profile và thực hiện xác minh ${currentScannedVerifyAccounts.length} tài khoản...`);
+      const accounts = currentScannedVerifyAccounts.map(a => ({
+        id: a.formattedId || a.id,
+        actionUrl: a.actionUrl
+      }));
+      await window.googleTool.verifyAdsBatch({
+        id: chosenProfileId,
+        mccId,
+        accounts,
+        customerIds: accounts.map(a => a.id),
+        urls: accounts.map(a => a.actionUrl)
+      });
+      toast(`Đã mở và sắp xếp các cửa sổ tài khoản thành công.`);
       $('verifyAdsDialog').close();
     } else {
-      for (const acc of currentScannedVerifyAccounts) {
-        await window.googleTool.openExternal(acc.actionUrl);
-      }
-      toast(`Đã mở tất cả ${currentScannedVerifyAccounts.length} link ${verifyMode.noun} trên trình duyệt.`);
-      $('verifyAdsDialog').close();
+      toast('Vui lòng chọn một profile trong mục "Profile thực hiện" phía trên.', true);
     }
   } catch (err) {
     toast(err.message, true);

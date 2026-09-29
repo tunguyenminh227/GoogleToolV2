@@ -9,6 +9,9 @@ const {
   checkGoogleLoginRedirect,
   clickStartNow,
   selectMccAccount,
+  clickSearchMagnifier,
+  typeCustomerIdInSearch,
+  waitForSearchResultAndOpenInNewWindow,
   startVerificationFlow,
 } = require('../ads-verification-browser');
 
@@ -118,3 +121,57 @@ test('startVerificationFlow runs full workflow successfully', t('test.startVerif
   assert.equal(result.mccId, '999-888-7776');
   assert.equal(result.status, 'mcc_selected');
 }));
+
+test('clickSearchMagnifier finds and clicks search button', t('test.clickSearchMagnifier', async () => {
+  const mockPage = {
+    evaluate: async fn => true,
+  };
+  const result = await clickSearchMagnifier(mockPage, 1000);
+  assert.equal(result, true);
+}));
+
+test('typeCustomerIdInSearch focuses input and types formatted customer ID', t('test.typeCustomerIdInSearch', async () => {
+  const typedChars = [];
+  const mockPage = {
+    evaluate: async fn => true,
+    keyboard: {
+      type: async (char, opts) => {
+        typedChars.push(char);
+      },
+    },
+  };
+  const result = await typeCustomerIdInSearch(mockPage, '1234567890', 10);
+  assert.equal(result.success, true);
+  assert.equal(result.typedId, '123-456-7890');
+  assert.equal(typedChars.join(''), '123-456-7890');
+}));
+
+test('waitForSearchResultAndOpenInNewWindow finds account and opens in new window', t('test.waitForSearchResultAndOpenInNewWindow', async () => {
+  const openedUrls = [];
+  const mockBrowser = {
+    newPage: async () => ({
+      goto: async url => {
+        openedUrls.push(url);
+      },
+    }),
+  };
+
+  const mockPage = {
+    evaluate: async () => ({
+      found: true,
+      href: '/aw/overview?ocid=111222333&workspaceId=0',
+      name: 'Account Test Name',
+      idText: '123-456-7890',
+      rect: { x: 20, y: 100, width: 400, height: 40 }
+    }),
+  };
+
+  const result = await waitForSearchResultAndOpenInNewWindow(mockPage, '123-456-7890', 2000, mockBrowser);
+  assert.equal(result.success, true);
+  assert.equal(result.account.idText, '123-456-7890');
+  assert.equal(result.openedInWindow, true);
+  assert.match(result.openedUrl, /https:\/\/ads\.google\.com\/aw\/overview\?ocid=111222333/);
+  assert.equal(openedUrls.length, 1);
+}));
+
+

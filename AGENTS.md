@@ -19,6 +19,12 @@
 5. `Login gmail` đã có logic ở `v2/gmail-login.js`.
 6. Khi nhập Gmail, password, recovery mail, mã Authenticator và các trường thông tin khác trong luồng Login gmail, phải nhập từng ký tự với độ trễ giữa các ký tự; không điền toàn bộ chuỗi tức thời. Độ trễ cần cấu hình được. Quy tắc này chỉ áp dụng trong lúc gõ; sau khi bấm **Next / Tiếp tục** vẫn phải chờ sự kiện URL thay đổi theo các mục trên, không dùng sleep để chuyển bước. Không ghi ký tự hoặc giá trị đang nhập vào log.
 
+## Luồng Verify Google Ads
+
+- Khi tìm thấy tài khoản trong danh sách tìm kiếm (account picker), **KHÔNG sử dụng** link dạng `/aw/billing/advertiserverification?ocid=...` hoặc `actionUrl` tùy chỉnh.
+- Mở chính xác link của tài khoản (link overview của tài khoản trả về từ kết quả tìm kiếm `foundAccount.href` hoặc mở link in new window).
+- Cửa sổ tài khoản mở ra ở window mới và được tự động sắp xếp theo hàng ngang có cùng kích thước như window chính. Không chia đôi màn hình và không thay đổi kích thước của window chính.
+
 ## Tự động khởi động lại app sau khi code
 
 - Sau khi hoàn thành việc viết code, chỉnh sửa hoặc sửa lỗi, agent phải tự động tắt các tiến trình app đang chạy và khởi động lại app bằng `start.bat` (`Start-Process -FilePath "c:\Users\TU\OneDrive\Desktop\GoogleTool\start.bat"`) để áp dụng ngay các thay đổi mới nhất.

@@ -181,3 +181,30 @@ test('passReauthChallenge handles 2FA TOTP challenge', t('test.passReauthTotp', 
   assert.equal(handled, true);
   assert.equal(page.typed.length, 6);
 }));
+
+test('passReauthChallenge handles recaptcha challenge', t('test.passReauthRecaptcha', async () => {
+  const page = new EventEmitter();
+  page.currentUrl = 'https://accounts.google.com/v3/signin/challenge/recaptcha';
+  page.url = () => page.currentUrl;
+  page.mainFrame = () => page;
+  page.mouse = { click: async () => {} };
+  page.evaluate = async (fn) => {
+    if (typeof fn === 'function') {
+      try { return fn(); } catch (_) { return false; }
+    }
+    return { x: 100, y: 100 };
+  };
+  const mockSolver = {
+    waitForCheckState: async () => true,
+    solveAndBypass: async () => {
+      page.currentUrl = 'https://myaccount.google.com/signinoptions/passkeys';
+      return { success: true, autoRedirected: true };
+    },
+  };
+  let statusState = null;
+  const onStatus = (s) => { statusState = s; };
+  const handled = await passReauthChallenge(page, {}, { timeoutMs: 500, solver: mockSolver, onStatus });
+  assert.equal(handled, true);
+  assert.equal(statusState, 'recaptcha');
+}));
+

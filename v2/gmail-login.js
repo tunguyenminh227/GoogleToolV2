@@ -22,6 +22,8 @@ const classify = t('gmail.classify', value => {
       return 'manual';
     case url.hostname === 'mail.google.com' && (full.includes('/mail/u/0/#inbox') || /^\/mail(\/|$)/.test(path) || url.hash.includes('inbox') || path === '/'):
       return 'inbox';
+    case url.hostname === 'myaccount.google.com':
+      return 'inbox';
     case /\/CheckCookie/i.test(path):
       return 'transition';
     case url.hostname !== 'accounts.google.com':
@@ -72,18 +74,52 @@ const totp = t('gmail.totp', (secret, now = Date.now()) => {
 const clickAndWaitUrl = t('gmail.clickAndWaitUrl', async (page, click, timeoutMs) => {
   const before = page.url();
   console.log('[login-trace] ⏳ Đăng ký theo dõi URL trước khi nhấn "Tiếp theo" (Next)...');
-  let timer, onNavigation, onClose, onError;
+  let timer, onNavigation, onLoad, onClose, onError, pollInterval;
+  let resolved = false;
+
   const changed = new Promise(t('gmail.subscribeUrl', (resolve, reject) => {
+    const checkAndResolve = () => {
+      if (resolved) return;
+      try {
+        const current = typeof page.url === 'function' ? page.url() : '';
+        if (current && current !== before) {
+          resolved = true;
+          console.log('[login-trace] 🚀 URL đã thay đổi thành công sau khi nhấn "Tiếp theo" (Next) -> chuyển bước kế tiếp.');
+          resolve();
+        }
+      } catch (_) {}
+    };
+
     onNavigation = t('gmail.urlChanged', frame => {
-      if (frame === page.mainFrame() && page.url() !== before) {
-        console.log('[login-trace] 🚀 URL đã thay đổi thành công sau khi nhấn "Tiếp theo" (Next) -> chuyển bước kế tiếp.');
-        resolve();
+      if (frame === page.mainFrame()) {
+        checkAndResolve();
       }
     });
-    onClose = t('gmail.pageClosed', () => reject(failure('closed', 'Trình duyệt đã đóng.')));
-    onError = t('gmail.pageError', () => reject(failure('page_error', 'Trang đăng nhập gặp lỗi.')));
-    page.on('framenavigated', onNavigation); page.on('close', onClose); page.on('error', onError);
+    onLoad = t('gmail.pageLoaded', () => {
+      checkAndResolve();
+    });
+    onClose = t('gmail.pageClosed', () => {
+      if (!resolved) reject(failure('closed', 'Trình duyệt đã đóng.'));
+    });
+    onError = t('gmail.pageError', () => {
+      if (!resolved) reject(failure('page_error', 'Trang đăng nhập gặp lỗi.'));
+    });
+
+    page.on('framenavigated', onNavigation);
+    if (typeof page.on === 'function') {
+      try { page.on('load', onLoad); } catch (_) {}
+      try { page.on('domcontentloaded', onLoad); } catch (_) {}
+    }
+    page.on('close', onClose);
+    page.on('error', onError);
+
+    // Bổ sung polling chu kỳ ngắn phòng trường hợp pushState / SPA không bắn framenavigated
+    pollInterval = setInterval(checkAndResolve, timeoutMs <= 500 ? 50 : 200);
+
     timer = setTimeout(t('gmail.urlTimeout', async () => {
+      if (resolved) return;
+      checkAndResolve();
+      if (resolved) return;
       console.error('[login-trace] ❌ Hết thời gian chờ: URL không đổi sau khi nhấn "Tiếp theo" (Next).');
       let pageMsg = '';
       try {
@@ -104,14 +140,33 @@ const clickAndWaitUrl = t('gmail.clickAndWaitUrl', async (page, click, timeoutMs
       reject(failure('url_unchanged', errMsg));
     }), timeoutMs);
   }));
+
   try {
     console.log('[login-trace] 🖱️ Đang nhấn nút "Tiếp theo" (Next)...');
-    await Promise.all([changed, click()]);
+    await Promise.all([
+      changed,
+      (async () => {
+        await click();
+        try {
+          if (!resolved && typeof page.url === 'function' && page.url() !== before) {
+            resolved = true;
+            console.log('[login-trace] 🚀 URL đã thay đổi ngay sau click -> chuyển bước kế tiếp.');
+          }
+        } catch (_) {}
+      })()
+    ]);
     console.log('[login-trace] 🆗 Thao tác nhấn "Tiếp theo" (Next) hoàn tất.');
   }
   finally {
-    clearTimeout(timer); page.removeListener('framenavigated', onNavigation);
-    page.removeListener('close', onClose); page.removeListener('error', onError);
+    clearTimeout(timer);
+    clearInterval(pollInterval);
+    page.removeListener('framenavigated', onNavigation);
+    if (typeof page.removeListener === 'function') {
+      try { page.removeListener('load', onLoad); } catch (_) {}
+      try { page.removeListener('domcontentloaded', onLoad); } catch (_) {}
+    }
+    page.removeListener('close', onClose);
+    page.removeListener('error', onError);
   }
 });
 
@@ -128,19 +183,13 @@ const waitForSelectorSafe = t('gmail.waitForSelectorSafe', async (page, selector
       const remaining = Math.max(timeoutMs <= 500 ? 50 : 1000, timeoutMs - (Date.now() - start));
       return await page.waitForSelector(selector, { visible: true, timeout: remaining });
     } catch (err) {
-      const msg = (err && err.message) || '';
-      if (
-        msg.includes('Execution context was destroyed') ||
-        msg.includes('Cannot find context with specified id') ||
-        msg.includes('context was destroyed') ||
-        msg.includes('frame was detached') ||
-        msg.includes('navigating')
-      ) {
-        console.log(`[login-trace] ⏳ Đang đợi trang ổn định sau chuyển hướng (${selector})...`);
-        await new Promise(r => setTimeout(r, retryDelay));
-        continue;
+      if (Date.now() - start >= timeoutMs) break;
+      const msg = ((err && err.message) || '').toLowerCase();
+      if (msg.includes('target closed') && page.isClosed && page.isClosed()) {
+        throw failure('closed', 'Trình duyệt đã đóng.');
       }
-      throw err;
+      console.log(`[login-trace] ⏳ Đang đợi trang ổn định sau chuyển hướng (${selector})...`);
+      await new Promise(r => setTimeout(r, retryDelay));
     }
   }
   throw failure('timeout', `Hết thời gian chờ phần tử ${selector}`);
@@ -290,14 +339,28 @@ const waitCheckboxReady = t('gmail.waitCheckboxReady', async (page, timeoutMs) =
 
 const clickRecaptchaNext = t('gmail.clickRecaptchaNext', async page => {
   assertAccounts(page);
-  const sels = ['#recaptchaNext', '#identifierNext', '#next', 'button[type="submit"]'];
+  const sels = [
+    '#recaptchaNext button',
+    '#recaptchaNext [role="button"]',
+    '#recaptchaNext',
+    '#identifierNext button',
+    '#identifierNext [role="button"]',
+    '#identifierNext',
+    '#next button',
+    '#next',
+    'button[type="submit"]',
+    'button.VfPpkd-LgbsSe',
+  ];
   for (const sel of sels) {
     try {
       if (typeof page.$ === 'function') {
         const el = await page.$(sel);
         if (el) {
-          await page.click(sel);
-          return;
+          const isVisible = await page.evaluate(node => node.offsetParent !== null && !node.disabled, el);
+          if (isVisible) {
+            await humanClick(page, el);
+            return;
+          }
         }
       } else {
         await page.click(sel);
@@ -305,6 +368,26 @@ const clickRecaptchaNext = t('gmail.clickRecaptchaNext', async page => {
       }
     } catch (_) {}
   }
+  try {
+    if (typeof page.evaluate === 'function') {
+      const clicked = await page.evaluate(() => {
+        const targets = ['tiếp theo', 'next', 'xác nhận', 'confirm', 'tiếp tục'];
+        const buttons = Array.from(document.querySelectorAll('button, [role="button"], input[type="submit"]'));
+        for (const b of buttons) {
+          if (b.offsetParent === null || b.disabled) continue;
+          const text = (b.innerText || b.textContent || b.value || '').trim().toLowerCase();
+          for (const t of targets) {
+            if (text === t || (text.includes(t) && text.length < 30)) {
+              b.click();
+              return true;
+            }
+          }
+        }
+        return false;
+      });
+      if (clicked) return;
+    }
+  } catch (_) {}
   try {
     await page.click('#recaptchaNext');
   } catch (_) {}
@@ -437,13 +520,37 @@ const stepEmail = t('gmail.stepEmail', async (page, account, options) => {
 
 const stepPassword = t('gmail.stepPassword', async (page, account, options) => {
   console.log('[login-trace] 10. Bước MẬT KHẨU: gõ mật khẩu -> Tiếp theo.');
-  const selector = 'input[name="Passwd"]';
-  const next = '#passwordNext';
+  const selector = 'input[name="Passwd"], input[type="password"], input[name="password"]';
+  const nextSelectors = [
+    '#passwordNext button',
+    '#passwordNext [role="button"]',
+    '#passwordNext',
+    'button[type="submit"]',
+    '#next',
+    'button.VfPpkd-LgbsSe',
+  ];
   await waitForSelectorSafe(page, selector, options);
   await typeField(page, selector, account.password, options);
   console.log('[login-trace] 10.x điền mật khẩu = OK');
-  await waitForSelectorSafe(page, next, options);
-  await clickAndWaitUrl(page, t('gmail.next', () => { assertAccounts(page); return page.click(next); }), options.timeoutMs);
+
+  let chosenNext = '#passwordNext';
+  for (const sel of nextSelectors) {
+    try {
+      if (typeof page.$ === 'function') {
+        const el = await page.$(sel);
+        if (el) {
+          const vis = await page.evaluate(n => n.offsetParent !== null && !n.disabled, el);
+          if (vis) { chosenNext = sel; break; }
+        }
+      } else {
+        chosenNext = sel;
+        break;
+      }
+    } catch (_) {}
+  }
+
+  await waitForSelectorSafe(page, chosenNext, options);
+  await clickAndWaitUrl(page, t('gmail.next', () => { assertAccounts(page); return page.click(chosenNext); }), options.timeoutMs);
 });
 
 const stepRecovery = t('gmail.stepRecovery', async (page, account, options) => {
@@ -1217,6 +1324,18 @@ const closeTimedOutBrowser = t('gmail.closeTimedOutBrowser', async page => {
   await page.browser().close();
 });
 
+const closeSuccessBrowser = t('gmail.closeSuccessBrowser', async (page, options = {}) => {
+  if (options.timeoutMs > 500) {
+    await new Promise(r => setTimeout(r, 1000));
+  }
+  if (typeof page?.browser === 'function') {
+    const b = page.browser();
+    if (b && typeof b.close === 'function') {
+      await b.close();
+    }
+  }
+});
+
 const login = t('gmail.login', async (page, account, onStatus, input = {}) => {
   const options = { typingDelayMs: 90, timeoutMs: 30000, ...input };
   if (!Number.isInteger(options.typingDelayMs) || options.typingDelayMs < 1 || options.typingDelayMs > 1000) throw failure('config', 'Độ trễ gõ phải từ 1 đến 1000 ms.');
@@ -1226,7 +1345,8 @@ const login = t('gmail.login', async (page, account, onStatus, input = {}) => {
     if (page.url() && classify(page.url()) === 'inbox') {
       const result = await stepInbox(page, account, options);
       await onStatus('success');
-      console.log('[login-trace] 12. Profile đã ở sẵn trang Gmail inbox -> hoàn tất.');
+      console.log('[login-trace] 12. Profile đã ở sẵn trang Gmail inbox -> đóng profile.');
+      await closeSuccessBrowser(page, options);
       return result;
     }
     await openLoginPage(page, options);
@@ -1256,7 +1376,8 @@ const login = t('gmail.login', async (page, account, onStatus, input = {}) => {
       if (state === 'inbox') {
         const result = await stepInbox(page, account, options);
         await onStatus('success');
-        console.log('[login-trace] 12. Flow login xong -> hoàn tất.');
+        console.log('[login-trace] 12. Flow login xong -> đóng profile.');
+        await closeSuccessBrowser(page, options);
         return result;
       }
       if (state === 'manual') throw failure('manual', 'Cần thao tác thủ công trên trình duyệt (CAPTCHA, chọn tài khoản hoặc xác minh khác).');
@@ -1334,5 +1455,6 @@ module.exports = {
   signInViaFreshPasskeyTab,
   clickPasskeyContinue,
   stepInbox,
+  closeSuccessBrowser,
   humanClick,
 };

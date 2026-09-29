@@ -76,3 +76,40 @@ test('supports importing security code and passkey', () => {
   assert.equal(parsedBlock.securityCode, '999888');
   assert.equal(parsedBlock.passkey, userPasskeyBlob);
 });
+
+test('supports flexible formats without recovery mail or with Mail||Password', () => {
+  // Format from user with empty recovery mail and double pipe
+  const userLine = 'hugh.thomas287920@gmail.com||duckdog39|zhox 5hdl svbp fitx slrq jdxo xxxy jrw3|18598491720|https://sms222.us?token=bu1YU466uH08101718';
+  const parsedUser = parseLine(userLine);
+  assert.equal(parsedUser.email, 'hugh.thomas287920@gmail.com');
+  assert.equal(parsedUser.password, 'duckdog39');
+  assert.equal(parsedUser.recoveryMail, '');
+  assert.equal(parsedUser.twofa, 'ZHOX5HDLSVBPFITXSLRQJDXOXXXYJRW3');
+  assert.equal(parsedUser.securityCode, '18598491720');
+  assert.equal(parsedUser.passkey, 'https://sms222.us?token=bu1YU466uH08101718');
+
+  // Format with RecoveryMail at column 2
+  const recAt2 = 'user@example.com|recov@example.com|mypassword|5dyumonzlnzc6l3z7uabyirr3ida32kt';
+  const parsedRec2 = parseLine(recAt2);
+  assert.equal(parsedRec2.email, 'user@example.com');
+  assert.equal(parsedRec2.recoveryMail, 'recov@example.com');
+  assert.equal(parsedRec2.password, 'mypassword');
+  assert.equal(parsedRec2.twofa, '5DYUMONZLNZC6L3Z7UABYIRR3IDA32KT');
+
+  // Format without recovery mail: Email|Password|2FA
+  const noRecLine = 'user@example.com|mypassword|5dyumonzlnzc6l3z7uabyirr3ida32kt';
+  const parsedNoRec = parseLine(noRecLine);
+  assert.equal(parsedNoRec.email, 'user@example.com');
+  assert.equal(parsedNoRec.password, 'mypassword');
+  assert.equal(parsedNoRec.recoveryMail, '');
+  assert.equal(parsedNoRec.twofa, '5DYUMONZLNZC6L3Z7UABYIRR3IDA32KT');
+
+  // Format without recovery mail: Email|Password|2FA|SecurityCode
+  const noRecWithSec = 'user@example.com|mypassword|5dyumonzlnzc6l3z7uabyirr3ida32kt|12345678';
+  const parsedNoRecSec = parseLine(noRecWithSec);
+  assert.equal(parsedNoRecSec.email, 'user@example.com');
+  assert.equal(parsedNoRecSec.password, 'mypassword');
+  assert.equal(parsedNoRecSec.recoveryMail, '');
+  assert.equal(parsedNoRecSec.twofa, '5DYUMONZLNZC6L3Z7UABYIRR3IDA32KT');
+  assert.equal(parsedNoRecSec.securityCode, '12345678');
+});

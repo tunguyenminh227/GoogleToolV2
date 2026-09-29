@@ -530,6 +530,37 @@ class TwoCaptchaSolver {
   }
 
   /**
+   * Kiểm tra trực tiếp frame anchor của reCAPTCHA xem đã có tích xanh chưa
+   * Vượt qua hạn chế cross-origin giữa accounts.google.com và www.google.com
+   * @param {Object} page - Puppeteer page
+   * @returns {Promise<boolean>}
+   */
+  async isAnchorChecked(page) {
+    if (!page || typeof page.frames !== 'function') return false;
+    try {
+      const frames = page.frames();
+      const anchorFrame = frames.find(f => {
+        const u = (f.url && f.url()) || '';
+        return u.includes('recaptcha') && u.includes('anchor');
+      });
+      if (anchorFrame && typeof anchorFrame.evaluate === 'function') {
+        const checked = await anchorFrame.evaluate(() => {
+          const anchor = document.querySelector('#recaptcha-anchor, .recaptcha-checkbox');
+          if (!anchor) return false;
+          const ariaChecked = anchor.getAttribute('aria-checked');
+          const cls = (anchor.className || '').toLowerCase();
+          if (ariaChecked === 'true' || cls.includes('recaptcha-checkbox-checked')) return true;
+          const statusEl = document.querySelector('#recaptcha-accessible-status, .rc-anchor-aria-status');
+          const statusText = (statusEl ? (statusEl.innerText || statusEl.textContent || '') : '').toLowerCase();
+          return statusText.includes('verified') || statusText.includes('đã được xác minh') || statusText.includes('bạn đã xác minh');
+        });
+        if (checked === true) return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  /**
    * Chờ quy trình sau khi bấm ô checkbox:
    * 1. Nhận diện icon loading (spinner) bắt đầu quay
    * 2. Chờ icon loading kết thúc và icon "Check" (tích xanh) xuất hiện
@@ -537,15 +568,22 @@ class TwoCaptchaSolver {
    * @param {Function} evaluate - Hàm evaluate của CDP hoặc Puppeteer
    * @param {number} [maxTimeoutMs=10000] - Thời gian chờ tối đa (ms)
    * @param {number} [intervalMs=150] - Chu kỳ kiểm tra (ms)
+   * @param {boolean} [abortOnChallenge=true] - Dừng sớm nếu Google mở bảng ảnh
+   * @param {Object} [page=null] - Puppeteer page để kiểm tra anchor frame cross-origin
    * @returns {Promise<boolean>}
    */
-  async waitForCheckState(evaluate, maxTimeoutMs = 100000, intervalMs = 150, abortOnChallenge = true) {
+  async waitForCheckState(evaluate, maxTimeoutMs = 100000, intervalMs = 150, abortOnChallenge = true, page = null) {
     if (typeof evaluate !== 'function') return false;
     const start = Date.now();
     let sawLoading = false;
     console.log('[TwoCaptcha] ⏳ Đang theo dõi ô tích: chờ icon Loading -> icon "Check"...');
 
     while (Date.now() - start < maxTimeoutMs) {
+      if (page && await this.isAnchorChecked(page)) {
+        console.log(`[TwoCaptcha] ✅ Đã xuất hiện icon "Check" (tích xanh trên anchor frame sau ${Date.now() - start}ms)!`);
+        return true;
+      }
+
       const state = await evaluate(GET_CHECKBOX_STATE_JS);
 
       if (state === 'checked') {
@@ -719,15 +757,36 @@ class TwoCaptchaSolver {
       while (Date.now() - startPoll < 7000) {
         await this._sleep(300);
 
+        // 0. Kiểm tra nếu URL đã thay đổi rời khỏi reCAPTCHA
+        if (page && typeof page.url === 'function') {
+          try {
+            const curUrl = page.url();
+            if (!curUrl.includes('challenge/recaptcha') && !curUrl.includes('challenge/kav')) {
+              console.log('[TwoCaptcha] 🚀 Trang đã tự động chuyển hướng sau khi SKIP!');
+              return {
+                handled: true,
+                success: true,
+                detected: true,
+                autoRedirected: true
+              };
+            }
+          } catch (_) {}
+        }
+
         // 1. Kiểm tra TH A: Iframe tự động tắt + tích xanh
         let isChecked = false;
-        try {
-          const state = await evaluate(GET_CHECKBOX_STATE_JS);
-          if (state === 'checked') isChecked = true;
-        } catch (_) {}
+        if (page) {
+          isChecked = await this.isAnchorChecked(page);
+        }
+        if (!isChecked) {
+          try {
+            const state = await evaluate(GET_CHECKBOX_STATE_JS);
+            if (state === 'checked') isChecked = true;
+          } catch (_) {}
+        }
 
         if (isChecked) {
-          console.log(`[TwoCaptcha] 🎉 Sau khi nhấn SKIP, iframe đã tự động tắt và xuất hiện tích xanh!`);
+          console.log(`[TwoCaptcha] 🎉 Sau khi nhấn SKIP, ô reCAPTCHA đã xuất hiện tích xanh!`);
           stateOutcome = 'checked';
           break;
         }
@@ -746,6 +805,16 @@ class TwoCaptchaSolver {
             await this._sleep(600);
             break;
           }
+        }
+      }
+
+      // Nếu hết poll mà không tìm thấy nextBtn (có thể bframe đã biến mất và xuất hiện tích xanh)
+      if (!stateOutcome && page) {
+        if (typeof page.url === 'function' && !page.url().includes('challenge/recaptcha') && !page.url().includes('challenge/kav')) {
+          return { handled: true, success: true, detected: true, autoRedirected: true };
+        }
+        if (await this.isAnchorChecked(page)) {
+          stateOutcome = 'checked';
         }
       }
 
@@ -814,7 +883,7 @@ class TwoCaptchaSolver {
       await this.clickCheckbox(evaluate, clickAt);
 
       console.log(`[TwoCaptcha] ⏳ Đang theo dõi phản hồi từ Google (tối đa 3.5s)...`);
-      const freePass = await this.waitForCheckState(evaluate, 10000, 150);
+      const freePass = await this.waitForCheckState(evaluate, 10000, 150, true, page);
       if (freePass) {
         console.log(`[TwoCaptcha] 🎉 TUYỆT VỜI: Google đã tự động cấp tích xanh (1-Click Pass)!`);
         console.log(`[TwoCaptcha] 💰 Tiết kiệm thành công 100% chi phí giải 2Captcha!`);
@@ -842,13 +911,26 @@ class TwoCaptchaSolver {
 
         if (btnInfo.type === 'skip') {
           const skipResult = await this.handleSkipFlow({ page, evaluate, autoClickNext, initialBtn: btnInfo });
-          if (skipResult && skipResult.bypassedNaturally) {
+          if (skipResult && (skipResult.bypassedNaturally || skipResult.autoRedirected || skipResult.success)) {
             return skipResult;
           }
           console.log(`[TwoCaptcha] 🔑 Đã sẵn sàng nút "Verify" sau khi SKIP -> Gửi cho 2Captcha giải...`);
         } else if (btnInfo.type === 'verify') {
           console.log(`[TwoCaptcha] 🎯 Nút trong iframe là "Verify" -> Gửi cho 2Captcha giải như hiện tại...`);
         }
+      }
+    }
+
+    // Kiểm tra nhanh trước khi gọi 2Captcha: xem trang đã được tích xanh hoặc chuyển URL chưa
+    if (page) {
+      if (typeof page.url === 'function' && !page.url().includes('challenge/recaptcha') && !page.url().includes('challenge/kav')) {
+        console.log('[TwoCaptcha] 🚀 Trang đã chuyển hướng, không cần gửi 2Captcha!');
+        return { success: true, detected: true, autoRedirected: true };
+      }
+      if (await this.isAnchorChecked(page)) {
+        console.log('[TwoCaptcha] ✅ Ô reCAPTCHA đã có tích xanh, không cần gửi 2Captcha!');
+        if (autoClickNext) await this.clickNext(evaluate);
+        return { success: true, detected: true, bypassedNaturally: true };
       }
     }
 

@@ -13,4 +13,21 @@ const gridBounds = traced('windows.gridBounds', (area, count, slot) => {
     y: area.y + Math.floor(position / columns) * strideY + offset,
     width, height };
 });
-module.exports = { gridBounds };
+const horizontalBounds = traced('windows.horizontalBounds', (area, count, index, options = {}) => {
+  const gap = options.gap !== undefined ? options.gap : 0;
+  const minWidth = options.minWidth || 380;
+  const total = Math.max(1, count);
+  const winWidth = total <= 1 ? area.width : Math.max(minWidth, Math.floor((area.width - (total - 1) * gap) / total));
+  const winHeight = area.height;
+  const x = area.x + index * (winWidth + gap);
+  const y = area.y;
+  return {
+    left: Math.round(x),
+    top: Math.round(y),
+    width: Math.round(winWidth),
+    height: Math.round(winHeight),
+    windowState: 'normal'
+  };
+});
+
+module.exports = { gridBounds, horizontalBounds };
